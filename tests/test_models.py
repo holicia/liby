@@ -25,3 +25,15 @@ async def test_init_db_creates_settings_table(tmp_path):
         )
         row = await cursor.fetchone()
     assert row is not None
+
+
+@pytest.mark.asyncio
+async def test_init_db_creates_api_costs_table(tmp_path):
+    db_path = str(tmp_path / "test.db")
+    await init_db(db_path)
+    async with aiosqlite.connect(db_path) as db:
+        cursor = await db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='api_costs'"
+        )
+        row = await cursor.fetchone()
+    assert row is not None
