@@ -8,7 +8,7 @@
     ("Claude", claude_cost, claude_limit, "#8B5CF6"),
     ("GPT",    gpt_cost,   gpt_limit,    "#22C55E")
   ] %}
-  {% set pct = [((cost / limit) * 100) | int, 100] | min %}
+  {% set pct = [((cost / (limit or 1)) * 100) | int, 100] | min %}
   {% set status = "초과" if pct >= 100 else ("임박" if pct >= 80 else "정상") %}
   <div class="mb-2">
     <div class="flex justify-between items-center mb-1">

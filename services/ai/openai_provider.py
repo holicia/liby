@@ -1,5 +1,5 @@
 import json
-from openai import OpenAI
+from openai import AsyncOpenAI
 from services.ai.base import AIProvider, SummaryResult
 from services.ai.claude import TIER2_PROMPT, TIER3_PROMPT
 import config
@@ -16,7 +16,7 @@ def _calc_cost(model: str, input_tokens: int, output_tokens: int) -> float:
 
 class OpenAIProvider(AIProvider):
     def __init__(self, api_key: str = config.OPENAI_API_KEY) -> None:
-        self._client = OpenAI(api_key=api_key)
+        self._client = AsyncOpenAI(api_key=api_key)
 
     def name(self) -> str:
         return "gpt"
@@ -36,7 +36,7 @@ class OpenAIProvider(AIProvider):
             text=text[:12000],
             existing_topics=", ".join(existing_topics) or "없음",
         )
-        resp = self._client.chat.completions.create(
+        resp = await self._client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
@@ -74,7 +74,7 @@ class OpenAIProvider(AIProvider):
     ) -> SummaryResult:
         tier3_model = config.GPT_MODELS["tier3"]
         t3_prompt = TIER3_PROMPT.format(summary=result.summary)
-        t3_resp = self._client.chat.completions.create(
+        t3_resp = await self._client.chat.completions.create(
             model=tier3_model,
             messages=[{"role": "user", "content": t3_prompt}],
             response_format={"type": "json_object"},

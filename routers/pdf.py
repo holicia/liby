@@ -40,7 +40,7 @@ async def analyze_pdf(
         )
         return templates.TemplateResponse(
             request, "partials/note_card.html",
-            {"note": _result_to_dict(note_id, result, "pdf", file.filename)},
+            {"note": _result_to_dict(note_id, result, "pdf", file.filename, ai.name())},
         )
     finally:
         os.unlink(tmp_path)

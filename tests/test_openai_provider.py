@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from services.ai.openai_provider import OpenAIProvider
 
 SAMPLE_TEXT = "GPT는 생성형 AI 모델이다. " * 20
@@ -26,7 +26,7 @@ async def test_summarize_quick_returns_result(provider):
     mock_resp.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
     mock_resp.model = "gpt-4o"
 
-    with patch.object(provider._client.chat.completions, "create", return_value=mock_resp):
+    with patch.object(provider._client.chat.completions, "create", new_callable=AsyncMock, return_value=mock_resp):
         result = await provider.summarize(SAMPLE_TEXT, "pdf", "quick", [])
 
     assert result.title == "GPT 개요"

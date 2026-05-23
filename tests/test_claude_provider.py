@@ -26,7 +26,7 @@ async def test_summarize_quick_returns_summary_result(provider):
 """)]
     mock_response.usage = MagicMock(input_tokens=100, output_tokens=50)
 
-    with patch.object(provider._client.messages, "create", return_value=mock_response):
+    with patch.object(provider._client.messages, "create", new_callable=AsyncMock, return_value=mock_response):
         result = await provider.summarize(SAMPLE_TEXT, "youtube", "quick", ["AI/ML"])
 
     assert result.title == "LLM 개요"
@@ -47,7 +47,7 @@ async def test_summarize_quick_mode_skips_tier3(provider):
 """)]
     mock_response.usage = MagicMock(input_tokens=10, output_tokens=10)
 
-    with patch.object(provider._client.messages, "create", return_value=mock_response) as mock_create:
+    with patch.object(provider._client.messages, "create", new_callable=AsyncMock, return_value=mock_response) as mock_create:
         result = await provider.summarize(SAMPLE_TEXT, "pdf", "quick", [])
 
     # quick 모드에서는 Tier2까지만 → create 호출 1회

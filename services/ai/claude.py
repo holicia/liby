@@ -39,7 +39,7 @@ def _calc_cost(model: str, input_tokens: int, output_tokens: int) -> float:
 
 class ClaudeProvider(AIProvider):
     def __init__(self, api_key: str = config.ANTHROPIC_API_KEY) -> None:
-        self._client = anthropic.Anthropic(api_key=api_key)
+        self._client = anthropic.AsyncAnthropic(api_key=api_key)
 
     def name(self) -> str:
         return "claude"
@@ -59,7 +59,7 @@ class ClaudeProvider(AIProvider):
             text=text[:12000],
             existing_topics=", ".join(existing_topics) or "없음",
         )
-        resp = self._client.messages.create(
+        resp = await self._client.messages.create(
             model=model,
             max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],
@@ -105,7 +105,7 @@ class ClaudeProvider(AIProvider):
     ) -> SummaryResult:
         model = config.CLAUDE_MODELS["tier3"]
         prompt = TIER3_PROMPT.format(summary=result.summary)
-        resp = self._client.messages.create(
+        resp = await self._client.messages.create(
             model=model,
             max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],

@@ -46,15 +46,15 @@ async def analyze_youtube(
     return templates.TemplateResponse(
         request,
         "partials/note_card.html",
-        {"note": _result_to_dict(note_id, result, "youtube", url)},
+        {"note": _result_to_dict(note_id, result, "youtube", url, ai.name())},
     )
 
-def _result_to_dict(note_id: int, result, source_type: str, source_url: str) -> dict:
+def _result_to_dict(note_id: int, result, source_type: str, source_url: str, ai_provider: str = "claude") -> dict:
     return {
         "id": note_id, "type": source_type, "source_url": source_url,
         "title": result.title, "summary": result.summary,
         "key_points": result.key_points, "tags": result.tags,
         "topic": result.suggested_topic, "summary_mode": result.summary_mode,
-        "ai_provider": "claude", "cost_usd": result.cost_usd,
+        "ai_provider": ai_provider, "cost_usd": result.cost_usd,
         "created_at": "방금 전",
     }
