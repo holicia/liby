@@ -12,8 +12,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="liby", lifespan=lifespan)
 templates = Jinja2Templates(directory="templates")
 
-from routers import youtube
+from routers import youtube, pdf
 app.include_router(youtube.router)
+app.include_router(pdf.router)
 
 @app.get("/")
 async def index(request: Request) -> HTMLResponse:
