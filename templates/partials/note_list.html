@@ -1,1 +1,7 @@
-{% for note in notes %}{{ note.title }}{% endfor %}
+{% if notes %}
+  {% for note in notes %}
+    {% include "partials/note_card.html" %}
+  {% endfor %}
+{% else %}
+<p class="text-sm text-gray-400 py-8 text-center">노트가 없습니다. 위에서 YouTube URL이나 PDF를 분석해보세요.</p>
+{% endif %}

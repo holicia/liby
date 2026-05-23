@@ -1,1 +1,43 @@
-<div>Claude: ${{ "%.2f"|format(claude_cost) }} / ${{ "%.2f"|format(claude_limit) }} | GPT: ${{ "%.2f"|format(gpt_cost) }} / ${{ "%.2f"|format(gpt_limit) }}</div>
+<div class="border-t border-[#E2E8E4] p-3 dark:border-gray-700">
+  <div class="flex justify-between items-center mb-2">
+    <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">이번 달 API</span>
+    <span class="text-[10px] text-[#1F6F4A] cursor-pointer">상세</span>
+  </div>
+
+  {% for name, cost, limit, color in [
+    ("Claude", claude_cost, claude_limit, "#8B5CF6"),
+    ("GPT",    gpt_cost,   gpt_limit,    "#22C55E")
+  ] %}
+  {% set pct = [((cost / limit) * 100) | int, 100] | min %}
+  {% set status = "초과" if pct >= 100 else ("임박" if pct >= 80 else "정상") %}
+  <div class="mb-2">
+    <div class="flex justify-between items-center mb-1">
+      <div class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full" style="background:{{ color }}"></span>
+        <span class="text-[11px] font-semibold text-[#1F2937] dark:text-gray-200">{{ name }}</span>
+        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded
+          {% if status == '정상' %}bg-[#EAF4EE] text-[#1F6F4A]
+          {% elif status == '임박' %}bg-yellow-100 text-yellow-700
+          {% else %}bg-red-100 text-red-600{% endif %}">{{ status }}</span>
+      </div>
+      <div>
+        <span class="text-[12px] font-bold text-[#1F2937] dark:text-gray-200">${{ "%.2f"|format(cost) }}</span>
+        <span class="text-[10px] text-gray-400"> / ${{ "%.2f"|format(limit) }}</span>
+      </div>
+    </div>
+    <div class="bg-[#E2E8E4] rounded h-1 overflow-hidden dark:bg-gray-700">
+      <div class="h-full rounded" style="width:{{ pct }}%; background:{{ color }}; opacity:.75;"></div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="pt-2 border-t border-[#E2E8E4] space-y-1 dark:border-gray-700">
+    {% for num, label, active in [(1,"Anthropic / OpenAI API",True),(2,"Claude Code CLI",False),(3,"Codex CLI",False)] %}
+    <div class="flex items-center gap-1.5 text-[10px] text-gray-400">
+      <span class="w-3.5 h-3.5 rounded-full border flex items-center justify-center text-[8px] font-bold
+        {% if active %}bg-[#1F6F4A] text-white border-[#1F6F4A]{% else %}border-gray-300 text-gray-400{% endif %}">{{ num }}</span>
+      <span class="{% if active %}text-[#1F6F4A] font-semibold{% endif %}">{{ label }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>

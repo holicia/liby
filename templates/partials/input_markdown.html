@@ -1,0 +1,15 @@
+<form class="flex gap-2 items-center">
+  <textarea name="content" placeholder="Markdown 내용을 붙여넣으세요..."
+            class="flex-1 bg-white border border-[#E2E8E4] rounded-lg px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-[#1F6F4A] dark:bg-gray-800 dark:text-gray-200 h-10 resize-none"></textarea>
+  <select name="provider" class="bg-white border border-[#E2E8E4] rounded-lg px-3 py-2.5 text-xs text-gray-500 dark:bg-gray-800">
+    <option value="claude">Claude</option>
+    <option value="gpt">GPT</option>
+  </select>
+  <select name="mode" class="bg-white border border-[#E2E8E4] rounded-lg px-3 py-2.5 text-xs text-gray-500 dark:bg-gray-800">
+    <option value="quick">빠른 정리</option>
+    <option value="detailed">상세 정리</option>
+  </select>
+  <button type="button" class="bg-gray-300 text-gray-500 rounded-lg px-5 py-2.5 text-xs font-semibold whitespace-nowrap cursor-not-allowed">
+    준비 중
+  </button>
+</form>

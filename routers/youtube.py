@@ -1,14 +1,13 @@
 from contextlib import asynccontextmanager
 from fastapi import APIRouter, Form, Request
-from fastapi.templating import Jinja2Templates
 import aiosqlite
 import config
 from services.extractor import extract_youtube
 from services.ai import get_provider
 from services.storage import save_note, record_api_cost
+from templates_env import templates
 
 router = APIRouter(prefix="/api/youtube", tags=["youtube"])
-templates = Jinja2Templates(directory="templates")
 
 @asynccontextmanager
 async def get_db_topics():

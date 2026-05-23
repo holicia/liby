@@ -1,0 +1,9 @@
+{% for t in topics %}
+<a hx-get="/api/items?topic={{ t.topic | urlencode }}"
+   hx-target="#note-list" hx-swap="innerHTML"
+   class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] cursor-pointer transition-colors">
+  <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+  {{ t.topic }}
+  <span class="ml-auto text-gray-400 text-[11px]">{{ t.count }}</span>
+</a>
+{% endfor %}

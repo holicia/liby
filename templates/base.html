@@ -1,1 +1,131 @@
-<!DOCTYPE html><html><head><title>liby</title></head><body>{% block content %}{% endblock %}</body></html>
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}liby{% endblock %}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<style>
+  :root { --green:#1F6F4A; --sage:#A8CBB2; --sage-light:#EAF4EE; --border:#E2E8E4; --sub:#F3F5F4; }
+  [data-theme="dark"] { --green:#34A66A; --sage:#2D6B4A; --sage-light:#14291E; --border:#2D3748; --sub:#1F2937; }
+  body { background: white; }
+  [data-theme="dark"] body { background: #111827; color: #F9FAFB; }
+</style>
+</head>
+<body class="text-[#1F2937] dark:text-gray-100">
+
+<!-- NAVBAR -->
+<nav class="sticky top-0 z-10 bg-white border-b border-[#E2E8E4] flex items-stretch h-12 px-5 shadow-sm dark:bg-gray-900 dark:border-gray-700">
+  <span class="font-extrabold text-[17px] text-[#1F6F4A] flex items-center pr-5 border-r border-[#E2E8E4] mr-2">📚 liby</span>
+  <div class="flex items-stretch">
+    {% for tab in [("YouTube","youtube"),("PDF","pdf"),("Markdown","markdown"),("Code","code")] %}
+    <button
+      class="px-4 text-xs font-medium text-gray-400 border-b-2 border-transparent hover:text-gray-700 transition-colors"
+      hx-get="/partials/input/{{ tab[1] }}"
+      hx-target="#input-panel"
+      hx-swap="innerHTML"
+      onclick="setActiveTab(this)"
+    >{{ tab[0] }}</button>
+    {% endfor %}
+  </div>
+  <div class="ml-auto flex items-center">
+    <button onclick="toggleTheme()" class="text-xs px-3 py-1 border border-[#E2E8E4] rounded-md text-gray-500 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] transition-colors" id="theme-btn">다크 모드</button>
+  </div>
+</nav>
+
+<!-- INPUT PANEL -->
+<div id="input-panel" class="bg-[#EAF4EE] border-b border-[#E2E8E4] px-5 py-3 dark:bg-[#14291E] dark:border-gray-700">
+  {% include "partials/input_youtube.html" %}
+</div>
+
+<!-- LAYOUT -->
+<div class="flex" style="height: calc(100vh - 96px);">
+
+  <!-- SIDEBAR -->
+  <aside class="w-52 border-r border-[#E2E8E4] bg-white flex flex-col dark:bg-gray-900 dark:border-gray-700">
+    <div class="flex-1 overflow-y-auto p-3 space-y-0.5">
+      <a href="/"
+         class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#EAF4EE] text-[#1F6F4A] font-semibold text-xs cursor-pointer">
+        <span class="w-2 h-2 rounded-full bg-[#1F6F4A]"></span>전체 노트
+        <span class="ml-auto bg-[#1F6F4A] text-white text-[10px] px-2 py-0.5 rounded-full font-bold" id="total-count">0</span>
+      </a>
+
+      <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2 pt-3 pb-1">주제별</p>
+      <div id="topic-list"
+           hx-get="/api/items/topics"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+      </div>
+      <button class="w-full text-center text-xs text-gray-400 border border-dashed border-[#E2E8E4] rounded-lg py-1.5 mt-1 hover:border-[#1F6F4A] hover:text-[#1F6F4A] transition-colors"
+              onclick="promptNewTopic()">+ 새 주제 추가</button>
+
+      <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2 pt-4 pb-1">태그 검색</p>
+      <input type="text" placeholder="태그 입력..."
+             class="w-full text-xs bg-[#F3F5F4] border border-[#E2E8E4] rounded-lg px-3 py-2 text-gray-500 outline-none focus:border-[#1F6F4A] dark:bg-gray-800"
+             onkeydown="addTagFilter(event, this)">
+      <div id="tag-chips" class="flex flex-wrap gap-1 px-1 mt-1"></div>
+    </div>
+
+    <!-- API COST FOOTER -->
+    <div id="api-cost-widget"
+         hx-get="/api/settings/cost"
+         hx-trigger="load, every 60s"
+         hx-swap="innerHTML">
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 overflow-y-auto px-6 py-5 bg-white dark:bg-gray-950">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const btn = document.getElementById("theme-btn");
+  html.setAttribute("data-theme", html.getAttribute("data-theme") === "light" ? "dark" : "light");
+  btn.textContent = html.getAttribute("data-theme") === "dark" ? "라이트 모드" : "다크 모드";
+}
+function setActiveTab(el) {
+  document.querySelectorAll("nav button").forEach(b => b.classList.remove("border-[#1F6F4A]", "text-[#1F6F4A]", "font-semibold"));
+  el.classList.add("border-[#1F6F4A]", "text-[#1F6F4A]", "font-semibold");
+}
+let activeTags = [];
+function addTagFilter(e, input) {
+  if (e.key !== "Enter" || !input.value.trim()) return;
+  const tag = input.value.trim();
+  if (!activeTags.includes(tag)) {
+    activeTags.push(tag);
+    renderTagChips();
+    refreshNotes();
+  }
+  input.value = "";
+}
+function removeTag(tag) {
+  activeTags = activeTags.filter(t => t !== tag);
+  renderTagChips();
+  refreshNotes();
+}
+function renderTagChips() {
+  const container = document.getElementById("tag-chips");
+  container.innerHTML = activeTags.map(t =>
+    `<span class="text-[10px] bg-[#EAF4EE] text-[#1F6F4A] px-2 py-0.5 rounded font-medium flex items-center gap-1">
+      ${t} <span class="opacity-50 cursor-pointer" onclick="removeTag('${t}')">x</span>
+    </span>`
+  ).join("");
+}
+function refreshNotes() {
+  const params = new URLSearchParams();
+  activeTags.forEach(t => params.append("tags", t));
+  htmx.ajax("GET", `/api/items?${params}`, { target: "#note-list", swap: "innerHTML" });
+}
+function promptNewTopic() {
+  const name = prompt("새 주제 이름을 입력하세요:");
+  if (name) refreshNotes();
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

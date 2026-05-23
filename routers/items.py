@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Query, Request
-from fastapi.templating import Jinja2Templates
 from typing import Optional
 import config
 from services.ai import get_provider
@@ -7,9 +6,9 @@ from services.storage import (
     get_note, list_notes, upgrade_to_detailed,
     record_api_cost, get_topics, get_random_notes,
 )
+from templates_env import templates
 
 router = APIRouter(prefix="/api/items", tags=["items"])
-templates = Jinja2Templates(directory="templates")
 
 @router.get("")
 async def get_items(
@@ -19,6 +18,22 @@ async def get_items(
     search: Optional[str] = Query(None),
 ):
     notes = await list_notes(config.DB_PATH, topic=topic, tags=tags, search=search)
+    return templates.TemplateResponse(
+        request, "partials/note_list.html",
+        {"notes": notes},
+    )
+
+@router.get("/topics")
+async def get_topics_partial(request: Request):
+    topics = await get_topics(config.DB_PATH)
+    return templates.TemplateResponse(
+        request, "partials/sidebar_topics.html",
+        {"topics": topics},
+    )
+
+@router.get("/random")
+async def get_random_notes_partial(request: Request):
+    notes = await get_random_notes(config.DB_PATH, n=4)
     return templates.TemplateResponse(
         request, "partials/note_list.html",
         {"notes": notes},

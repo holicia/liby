@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Request
-from fastapi.templating import Jinja2Templates
 import config
+from templates_env import templates
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
-templates = Jinja2Templates(directory="templates")
 
 @router.get("/cost")
 async def get_cost_widget(request: Request):

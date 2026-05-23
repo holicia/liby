@@ -1,1 +1,18 @@
-{% extends "base.html" %}{% block content %}index{% endblock %}
+{% extends "base.html" %}
+{% block content %}
+<p class="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-3">최근 업데이트</p>
+<div id="note-list"
+     hx-get="/api/items"
+     hx-trigger="load"
+     hx-swap="innerHTML"
+     class="space-y-2 mb-7">
+</div>
+
+<p class="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-3">오늘의 추천 노트</p>
+<div id="recommended-notes"
+     hx-get="/api/items/random"
+     hx-trigger="load"
+     hx-swap="innerHTML"
+     class="grid grid-cols-2 gap-2">
+</div>
+{% endblock %}

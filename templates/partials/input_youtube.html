@@ -1,0 +1,16 @@
+<form hx-post="/api/youtube" hx-target="#note-list" hx-swap="afterbegin" class="flex gap-2 items-center">
+  <input name="url" type="url" required
+         placeholder="YouTube URL을 입력하세요 (예: https://youtube.com/watch?v=...)"
+         class="flex-1 bg-white border border-[#E2E8E4] rounded-lg px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-[#1F6F4A] dark:bg-gray-800 dark:text-gray-200">
+  <select name="provider" class="bg-white border border-[#E2E8E4] rounded-lg px-3 py-2.5 text-xs text-gray-500 dark:bg-gray-800">
+    <option value="claude">Claude</option>
+    <option value="gpt">GPT</option>
+  </select>
+  <select name="mode" class="bg-white border border-[#E2E8E4] rounded-lg px-3 py-2.5 text-xs text-gray-500 dark:bg-gray-800">
+    <option value="quick">빠른 정리</option>
+    <option value="detailed">상세 정리</option>
+  </select>
+  <button type="submit" class="bg-[#1F6F4A] text-white rounded-lg px-5 py-2.5 text-xs font-semibold hover:opacity-90 transition-opacity whitespace-nowrap">
+    분석하기
+  </button>
+</form>

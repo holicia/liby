@@ -1,15 +1,14 @@
 import os
 import tempfile
 from fastapi import APIRouter, Form, Request, UploadFile, File
-from fastapi.templating import Jinja2Templates
 import config
 from services.extractor import extract_pdf
 from services.ai import get_provider
 from services.storage import save_note, record_api_cost
 from routers.youtube import get_db_topics, _result_to_dict
+from templates_env import templates
 
 router = APIRouter(prefix="/api/pdf", tags=["pdf"])
-templates = Jinja2Templates(directory="templates")
 
 @router.post("")
 async def analyze_pdf(
