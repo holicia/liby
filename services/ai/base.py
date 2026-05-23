@@ -1,0 +1,44 @@
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Optional
+
+
+@dataclass
+class SummaryResult:
+    title: str
+    language: str
+    word_count: int
+    reading_time_min: int
+    sections: list[str]
+    summary: str
+    key_points: list[str]
+    tags: list[str]
+    suggested_topic: str
+    summary_mode: str  # "quick" | "detailed"
+    main_arguments: Optional[list[str]] = None
+    insights: Optional[list[str]] = None
+    questions_raised: Optional[list[str]] = None
+    zettel_links: Optional[list[int]] = None
+    related_concepts: Optional[list[str]] = None
+    cost_usd: float = 0.0
+    models_used: list[str] = field(default_factory=list)
+
+
+class AIProvider(ABC):
+    @abstractmethod
+    async def summarize(
+        self,
+        text: str,
+        source_type: str,
+        mode: str,
+        existing_topics: list[str],
+    ) -> SummaryResult:
+        ...
+
+    @abstractmethod
+    async def run_tier3(self, summary: str) -> SummaryResult:
+        ...
+
+    @abstractmethod
+    def name(self) -> str:
+        ...
