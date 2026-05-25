@@ -66,9 +66,10 @@ async def set_item_project(request: Request, note_id: int, project_id: str = For
 @router.get("/{note_id}")
 async def get_item(request: Request, note_id: int):
     note = await get_note(config.DB_PATH, note_id)
+    projects = await list_projects(config.DB_PATH)
     return templates.TemplateResponse(
         request, "partials/note_card.html",
-        {"note": note},
+        {"note": note, "projects": projects},
     )
 
 @router.post("/{note_id}/open-md")

@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch, AsyncMock
 from httpx import AsyncClient, ASGITransport
+import config
 from main import app
 
 MOCK_NOTE = {
@@ -66,11 +67,10 @@ async def test_get_items_with_project_filter():
 
 @pytest.mark.asyncio
 async def test_set_note_project():
-    with patch("routers.items.set_note_project") as mock_set, \
-         patch("routers.items.get_note", return_value=MOCK_NOTE), \
-         patch("routers.items.list_projects", return_value=[]):
+    with patch("routers.items.set_note_project", new_callable=AsyncMock) as mock_set, \
+         patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.post("/api/items/1/project", data={"project_id": "5"})
     assert resp.status_code == 200
-    mock_set.assert_called_once()
-    assert mock_set.call_args.args[2] == 5
+    mock_set.assert_awaited_once_with(config.DB_PATH, 1, 5)
