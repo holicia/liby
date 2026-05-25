@@ -47,7 +47,7 @@ def _build_segments(json3_data: dict) -> list[dict]:
     segments = []
     for ev in json3_data.get("events", []):
         text = "".join(seg.get("utf8", "") for seg in ev.get("segs", [])).strip()
-        if not text or text == "\n":
+        if not text:  # strip 후 빈 문자열(자막 사이 개행 이벤트 등) 제외
             continue
         segments.append({"t": int(ev.get("tStartMs", 0) // 1000), "text": text})
     return segments
@@ -146,10 +146,12 @@ def _fetch_full_sync(video_id: str) -> dict:
     chosen = None
     for lang in ["ko", "en"]:
         if lang in subs:
-            chosen = subs[lang]; break
+            chosen = subs[lang]
+            break
         if lang in auto_subs:
-            chosen = auto_subs[lang]; break
-    if not chosen:
+            chosen = auto_subs[lang]
+            break
+    if not chosen:  # None 또는 빈 리스트 모두 여기서 차단 → 아래 chosen[0] 안전
         raise ValueError(f"트랜스크립트를 찾을 수 없습니다: {video_id}")
 
     j3 = next((s for s in chosen if s.get("ext") == "json3"), chosen[0])
@@ -169,7 +171,7 @@ def _fetch_full_sync(video_id: str) -> dict:
 
 async def extract_youtube_full(url: str) -> dict:
     video_id = _extract_video_id(url)
-    return await asyncio.get_event_loop().run_in_executor(None, _fetch_full_sync, video_id)
+    return await asyncio.get_running_loop().run_in_executor(None, _fetch_full_sync, video_id)
 
 
 def _github_api(path: str) -> dict:

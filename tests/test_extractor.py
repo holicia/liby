@@ -69,3 +69,16 @@ def test_segments_to_transcript_formats_timestamps():
 def test_youtube_video_id_ok_and_none():
     assert youtube_video_id("https://youtu.be/dQw4w9WgXcQ") == "dQw4w9WgXcQ"
     assert youtube_video_id("not a url") is None
+
+def test_parse_native_chapters_all_missing_start_returns_none():
+    assert _parse_native_chapters([{"title": "제목만"}, {"title": "또"}]) is None
+
+def test_parse_native_chapters_blank_title_defaults():
+    assert _parse_native_chapters([{"start_time": 5, "title": "   "}]) == [{"t": 5, "label": "챕터"}]
+
+def test_build_segments_empty_events_returns_empty():
+    assert _build_segments({"events": []}) == []
+    assert _build_segments({}) == []
+
+def test_segments_to_transcript_empty_returns_empty_string():
+    assert _segments_to_transcript([]) == ""
