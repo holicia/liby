@@ -1,7 +1,7 @@
 import json
 from openai import AsyncOpenAI
 from services.ai.base import AIProvider, SummaryResult
-from services.ai.claude import TIER2_PROMPT, TIER2_CODE_PROMPT, TIER3_PROMPT, CHAPTERS_PROMPT
+from services.ai.claude import TIER2_PROMPT, TIER2_CODE_PROMPT, TIER3_PROMPT, CHAPTERS_PROMPT, _build_chapters
 import config
 
 GPT_PRICING: dict[str, dict[str, float]] = {
@@ -99,13 +99,11 @@ class OpenAIProvider(AIProvider):
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
         )
-        data = json.loads(resp.choices[0].message.content)
         cost = _calc_cost(model, resp.usage.prompt_tokens, resp.usage.completion_tokens)
-        chapters = [
-            {"t": int(c["t"]), "label": str(c.get("label", "")).strip()}
-            for c in data.get("chapters", []) if "t" in c
-        ]
-        chapters.sort(key=lambda c: c["t"])
+        try:
+            chapters = _build_chapters(json.loads(resp.choices[0].message.content))
+        except (json.JSONDecodeError, ValueError, TypeError):
+            chapters = []
         return chapters, cost, model
 
     async def run_tier3(self, summary: str) -> SummaryResult:

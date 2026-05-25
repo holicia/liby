@@ -69,3 +69,26 @@ async def test_generate_chapters_parses_json(provider):
     assert chapters == [{"t": 0, "label": "인트로"}, {"t": 150, "label": "핵심 개념"}]
     assert cost > 0
     assert model
+
+
+@pytest.mark.asyncio
+async def test_generate_chapters_skips_non_numeric_t_and_sorts(provider):
+    # LLM이 "0:00" 같은 비숫자 t를 섞어 보내거나 순서가 뒤섞여도 안전해야 함
+    mock_response = MagicMock()
+    mock_response.content = [MagicMock(text=
+        '{"chapters": [{"t": "1:30", "label": "잘못"}, {"t": 90, "label": "뒤"}, {"t": 0, "label": "앞"}]}')]
+    mock_response.usage = MagicMock(input_tokens=10, output_tokens=10)
+    with patch.object(provider._client.messages, "create", new_callable=AsyncMock, return_value=mock_response):
+        chapters, _, _ = await provider.generate_chapters("x")
+    assert chapters == [{"t": 0, "label": "앞"}, {"t": 90, "label": "뒤"}]
+
+
+@pytest.mark.asyncio
+async def test_generate_chapters_handles_bad_json(provider):
+    mock_response = MagicMock()
+    mock_response.content = [MagicMock(text="죄송하지만 응답할 수 없습니다.")]
+    mock_response.usage = MagicMock(input_tokens=10, output_tokens=5)
+    with patch.object(provider._client.messages, "create", new_callable=AsyncMock, return_value=mock_response):
+        chapters, cost, model = await provider.generate_chapters("x")
+    assert chapters == []
+    assert cost > 0  # 호출 비용은 그대로 기록

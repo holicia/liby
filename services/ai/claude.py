@@ -13,6 +13,19 @@ def _parse_json(raw: str) -> dict:
         raw = re.sub(r'\n?```\s*$', '', raw)
     return json.loads(raw.strip())
 
+
+def _build_chapters(data: dict) -> list[dict]:
+    """LLM 응답 dict → 정렬된 [{t:int, label:str}]. 비숫자/누락 t는 건너뜀."""
+    chapters = []
+    for c in data.get("chapters", []):
+        try:
+            t = int(float(c["t"]))  # "150", 150, 150.0 모두 허용; "0:00" 등은 건너뜀
+        except (KeyError, ValueError, TypeError):
+            continue
+        chapters.append({"t": t, "label": str(c.get("label", "")).strip()})
+    chapters.sort(key=lambda c: c["t"])
+    return chapters
+
 TIER2_PROMPT = """다음 내용을 분석하여 노트를 작성하세요.
 기존 주제 목록: {existing_topics}
 
@@ -133,13 +146,11 @@ class ClaudeProvider(AIProvider):
             model=model, max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],
         )
-        data = _parse_json(resp.content[0].text)
         cost = _calc_cost(model, resp.usage.input_tokens, resp.usage.output_tokens)
-        chapters = [
-            {"t": int(c["t"]), "label": str(c.get("label", "")).strip()}
-            for c in data.get("chapters", []) if "t" in c
-        ]
-        chapters.sort(key=lambda c: c["t"])
+        try:
+            chapters = _build_chapters(_parse_json(resp.content[0].text))
+        except (json.JSONDecodeError, ValueError, TypeError):
+            chapters = []  # 비정상 응답이어도 챕터는 부가 기능이므로 빈 결과로 폴백
         return chapters, cost, model
 
     async def run_tier3(self, summary: str) -> SummaryResult:
