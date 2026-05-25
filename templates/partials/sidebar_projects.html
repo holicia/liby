@@ -1,0 +1,26 @@
+<a onclick="enterHomeView()"
+   class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-500 dark:text-gray-400 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] dark:hover:bg-[#14291E] dark:hover:text-[#34A66A] cursor-pointer transition-colors">
+  <span class="w-2 h-2 rounded-full bg-[#1F6F4A]"></span>전체 노트
+</a>
+{% for p in projects %}
+<div class="group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-500 dark:text-gray-400 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] dark:hover:bg-[#14291E] dark:hover:text-[#34A66A] cursor-pointer transition-colors">
+  <span class="flex items-center gap-2 flex-1 min-w-0" onclick="enterProjectView('{{ p.id }}', '{{ p.name }}')">
+    <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+    <span class="truncate">{{ p.name }}</span>
+    <span class="ml-auto text-gray-400 text-[11px]">{{ p.count }}</span>
+  </span>
+  <button class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-[#1F6F4A]"
+          title="이름 변경"
+          onclick="renameProject('{{ p.id }}', '{{ p.name }}')">✎</button>
+  <button class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500"
+          title="삭제"
+          onclick="deleteProject('{{ p.id }}', '{{ p.name }}')">✕</button>
+</div>
+{% endfor %}
+<a onclick="enterUnassignedView()"
+   class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-500 dark:text-gray-400 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] dark:hover:bg-[#14291E] dark:hover:text-[#34A66A] cursor-pointer transition-colors">
+  <span class="w-2 h-2 rounded-full bg-gray-300"></span>미분류
+  <span class="ml-auto text-gray-400 text-[11px]">{{ unassigned }}</span>
+</a>
+<button class="w-full text-center text-xs text-gray-400 border border-dashed border-[#E2E8E4] rounded-lg py-1.5 mt-1 hover:border-[#1F6F4A] hover:text-[#1F6F4A] transition-colors"
+        onclick="createProject()">+ 새 프로젝트</button>

@@ -1,0 +1,4 @@
+<option value="">(프로젝트 없음)</option>
+{% for p in projects %}
+<option value="{{ p.id }}">{{ p.name }}</option>
+{% endfor %}
