@@ -100,4 +100,17 @@ async def test_backfill_timeline_calls_set_timeline():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.post("/api/items/1/timeline")
     assert resp.status_code == 200
-    mock_set.assert_awaited_once()
+    mock_set.assert_awaited_once_with(config.DB_PATH, 1, [{"t": 0, "label": "C"}])
+
+
+@pytest.mark.asyncio
+async def test_backfill_timeline_skips_non_youtube():
+    pdf_note = {**MOCK_NOTE, "type": "pdf", "source_url": "paper.pdf"}
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=pdf_note), \
+         patch("routers.items.extract_youtube_full", new_callable=AsyncMock) as mock_extract, \
+         patch("routers.items.set_timeline", new_callable=AsyncMock) as mock_set:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/items/1/timeline")
+    assert resp.status_code == 200
+    mock_extract.assert_not_called()  # 비-youtube는 추출 시도 안 함
+    mock_set.assert_not_called()
