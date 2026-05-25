@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from httpx import AsyncClient, ASGITransport
 import config
 from main import app
@@ -74,3 +74,30 @@ async def test_set_note_project():
             resp = await c.post("/api/items/1/project", data={"project_id": "5"})
     assert resp.status_code == 200
     mock_set.assert_awaited_once_with(config.DB_PATH, 1, 5)
+
+
+@pytest.mark.asyncio
+async def test_detail_passes_video_id_for_youtube():
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert MOCK_NOTE["title"] in resp.text
+
+
+@pytest.mark.asyncio
+async def test_backfill_timeline_calls_set_timeline():
+    note = dict(MOCK_NOTE)
+    fake_ai = MagicMock()
+    fake_ai.name.return_value = "claude"
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note), \
+         patch("routers.items.extract_youtube_full", new_callable=AsyncMock,
+               return_value={"text": "x", "video_id": "v", "native_chapters": None, "segments": [{"t": 0, "text": "a"}]}), \
+         patch("routers.items.get_provider", return_value=fake_ai), \
+         patch("routers.items.resolve_chapters", new_callable=AsyncMock, return_value=([{"t": 0, "label": "C"}], 0.0, "")), \
+         patch("routers.items.set_timeline", new_callable=AsyncMock) as mock_set, \
+         patch("routers.items.record_api_cost", new_callable=AsyncMock):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/items/1/timeline")
+    assert resp.status_code == 200
+    mock_set.assert_awaited_once()

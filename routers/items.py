@@ -7,8 +7,10 @@ from services.ai import get_provider
 from services.storage import (
     get_note, list_notes, upgrade_to_detailed,
     record_api_cost, get_topics, get_random_notes,
-    list_projects, set_note_project,
+    list_projects, set_note_project, set_timeline,
 )
+from services.extractor import youtube_video_id, extract_youtube_full
+from services.chapters import resolve_chapters
 from routers._utils import parse_project_id
 from templates_env import templates
 
@@ -49,9 +51,31 @@ async def get_random_notes_partial(request: Request):
 @router.get("/{note_id}/detail")
 async def get_item_detail(request: Request, note_id: int):
     note = await get_note(config.DB_PATH, note_id)
+    video_id = None
+    if note and note.get("type") == "youtube" and note.get("source_url"):
+        video_id = youtube_video_id(note["source_url"])
     return templates.TemplateResponse(
         request, "partials/note_detail_modal.html",
-        {"note": note},
+        {"note": note, "video_id": video_id},
+    )
+
+@router.post("/{note_id}/timeline")
+async def backfill_timeline(request: Request, note_id: int):
+    note = await get_note(config.DB_PATH, note_id)
+    if not note or not note.get("source_url"):
+        return templates.TemplateResponse(
+            request, "partials/note_detail_modal.html", {"note": note, "video_id": None})
+    data = await extract_youtube_full(note["source_url"])
+    provider = get_provider(note.get("ai_provider", config.DEFAULT_AI_PROVIDER))
+    chapters, cost, model = await resolve_chapters(data["native_chapters"], data["segments"], provider)
+    await set_timeline(config.DB_PATH, note_id, chapters)
+    if cost > 0:
+        await record_api_cost(config.DB_PATH, provider.name(), model, 0, 0, cost, note_id)
+    updated = await get_note(config.DB_PATH, note_id)
+    video_id = youtube_video_id(updated["source_url"]) if updated.get("source_url") else None
+    return templates.TemplateResponse(
+        request, "partials/note_detail_modal.html",
+        {"note": updated, "video_id": video_id},
     )
 
 @router.post("/{note_id}/project")
