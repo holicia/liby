@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Form, Query, Request
 from fastapi.responses import JSONResponse
 from typing import Optional
 import os
@@ -7,6 +7,7 @@ from services.ai import get_provider
 from services.storage import (
     get_note, list_notes, upgrade_to_detailed,
     record_api_cost, get_topics, get_random_notes,
+    list_projects, set_note_project,
 )
 from templates_env import templates
 
@@ -18,11 +19,13 @@ async def get_items(
     topic: Optional[str] = Query(None),
     tags: list[str] = Query([]),
     search: Optional[str] = Query(None),
+    project_id: Optional[str] = Query(None),
 ):
-    notes = await list_notes(config.DB_PATH, topic=topic, tags=tags, search=search)
+    notes = await list_notes(config.DB_PATH, topic=topic, tags=tags, search=search, project_id=project_id)
+    projects = await list_projects(config.DB_PATH)
     return templates.TemplateResponse(
         request, "partials/note_list.html",
-        {"notes": notes},
+        {"notes": notes, "projects": projects},
     )
 
 @router.get("/topics")
@@ -36,9 +39,10 @@ async def get_topics_partial(request: Request):
 @router.get("/random")
 async def get_random_notes_partial(request: Request):
     notes = await get_random_notes(config.DB_PATH, n=4)
+    projects = await list_projects(config.DB_PATH)
     return templates.TemplateResponse(
         request, "partials/note_list.html",
-        {"notes": notes},
+        {"notes": notes, "projects": projects},
     )
 
 @router.get("/{note_id}/detail")
@@ -47,6 +51,16 @@ async def get_item_detail(request: Request, note_id: int):
     return templates.TemplateResponse(
         request, "partials/note_detail_modal.html",
         {"note": note},
+    )
+
+@router.post("/{note_id}/project")
+async def set_item_project(request: Request, note_id: int, project_id: str = Form("")):
+    pid = int(project_id) if project_id.strip() else None
+    await set_note_project(config.DB_PATH, note_id, pid)
+    note = await get_note(config.DB_PATH, note_id)
+    projects = await list_projects(config.DB_PATH)
+    return templates.TemplateResponse(
+        request, "partials/note_card.html", {"note": note, "projects": projects},
     )
 
 @router.get("/{note_id}")
@@ -80,7 +94,8 @@ async def upgrade_note(request: Request, note_id: int):
     await record_api_cost(config.DB_PATH, provider.name(), "", 0, 0, detailed.cost_usd, note_id)
 
     updated_note = await get_note(config.DB_PATH, note_id)
+    projects = await list_projects(config.DB_PATH)
     return templates.TemplateResponse(
         request, "partials/note_card.html",
-        {"note": updated_note},
+        {"note": updated_note, "projects": projects},
     )
