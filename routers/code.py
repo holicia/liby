@@ -15,7 +15,9 @@ async def analyze_code(
     url: str = Form(...),
     provider: str = Form(config.DEFAULT_AI_PROVIDER),
     mode: str = Form("quick"),
+    project_id: str = Form(""),
 ):
+    pid = int(project_id) if project_id.strip() else None
     task = new_task("code", url)
     ai = get_provider(provider)
 
@@ -30,7 +32,7 @@ async def analyze_code(
         note_id = await save_note(
             db_path=config.DB_PATH, vault_path=config.VAULT_PATH,
             source_type="code", source_url=url,
-            result=result, ai_provider=ai.name(),
+            result=result, ai_provider=ai.name(), project_id=pid,
         )
         await record_api_cost(
             config.DB_PATH, ai.name(),

@@ -17,9 +17,11 @@ async def analyze_pdf(
     file: UploadFile = File(...),
     provider: str = Form(config.DEFAULT_AI_PROVIDER),
     mode: str = Form("quick"),
+    project_id: str = Form(""),
 ):
     file_bytes = await file.read()
     filename = file.filename or "unknown.pdf"
+    pid = int(project_id) if project_id.strip() else None
     task = new_task("pdf", filename)
     ai = get_provider(provider)
 
@@ -40,7 +42,7 @@ async def analyze_pdf(
         note_id = await save_note(
             db_path=config.DB_PATH, vault_path=config.VAULT_PATH,
             source_type="pdf", source_url=filename,
-            result=result, ai_provider=ai.name(),
+            result=result, ai_provider=ai.name(), project_id=pid,
         )
         await record_api_cost(
             config.DB_PATH, ai.name(),

@@ -14,8 +14,10 @@ async def analyze_text(
     content: str = Form(...),
     provider: str = Form(config.DEFAULT_AI_PROVIDER),
     mode: str = Form("quick"),
+    project_id: str = Form(""),
 ):
     content = content.strip()
+    pid = int(project_id) if project_id.strip() else None
     task = new_task("text", content[:40])
     ai = get_provider(provider)
 
@@ -28,7 +30,7 @@ async def analyze_text(
         note_id = await save_note(
             db_path=config.DB_PATH, vault_path=config.VAULT_PATH,
             source_type="text", source_url=content[:100],
-            result=result, ai_provider=ai.name(),
+            result=result, ai_provider=ai.name(), project_id=pid,
         )
         await record_api_cost(
             config.DB_PATH, ai.name(),

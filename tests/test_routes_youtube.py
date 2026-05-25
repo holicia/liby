@@ -38,3 +38,16 @@ async def test_analyze_youtube_missing_url_returns_422():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post("/api/youtube", data={"provider": "claude", "mode": "quick"})
     assert resp.status_code == 422
+
+@pytest.mark.asyncio
+async def test_youtube_accepts_project_id():
+    async def fake_enqueue(task, fn):
+        return None
+    with patch("routers.youtube.enqueue", new=fake_enqueue), \
+         patch("routers.youtube.get_provider"):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/youtube", data={
+                "url": "https://youtu.be/abc", "provider": "claude",
+                "mode": "quick", "project_id": "7",
+            })
+    assert resp.status_code == 200
