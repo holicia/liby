@@ -4,17 +4,17 @@
 </a>
 {% for p in projects %}
 <div class="group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-500 dark:text-gray-400 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] dark:hover:bg-[#14291E] dark:hover:text-[#34A66A] cursor-pointer transition-colors">
-  <span class="flex items-center gap-2 flex-1 min-w-0" onclick="enterProjectView('{{ p.id }}', '{{ p.name }}')">
+  <span class="flex items-center gap-2 flex-1 min-w-0" onclick="enterProjectView({{ p.id }}, {{ p.name | tojson }})">
     <span class="w-2 h-2 rounded-full bg-amber-400"></span>
     <span class="truncate">{{ p.name }}</span>
     <span class="ml-auto text-gray-400 text-[11px]">{{ p.count }}</span>
   </span>
   <button class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-[#1F6F4A]"
           title="이름 변경"
-          onclick="renameProject('{{ p.id }}', '{{ p.name }}')">✎</button>
+          onclick="renameProject({{ p.id }}, {{ p.name | tojson }})">✎</button>
   <button class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500"
           title="삭제"
-          onclick="deleteProject('{{ p.id }}', '{{ p.name }}')">✕</button>
+          onclick="deleteProject({{ p.id }}, {{ p.name | tojson }})">✕</button>
 </div>
 {% endfor %}
 <a onclick="enterUnassignedView()"
