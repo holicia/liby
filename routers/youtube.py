@@ -2,7 +2,8 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, Form, Request
 import aiosqlite
 import config
-from services.extractor import extract_youtube
+from services.extractor import extract_youtube_full
+from services.chapters import resolve_chapters
 from services.ai import get_provider
 from services.storage import save_note, record_api_cost
 from services.task_queue import new_task, enqueue, queue_meta
@@ -35,16 +36,19 @@ async def analyze_youtube(
 
     async def do_work(t):
         t.progress = "YouTube 자막 추출 중..."
-        text, _video_id = await extract_youtube(url)
+        data = await extract_youtube_full(url)
         t.progress = "AI 분석 중..."
         async with get_db_topics() as topics:
-            result = await ai.summarize(text, "youtube", mode, topics)
+            result = await ai.summarize(data["text"], "youtube", mode, topics)
         t.title = result.title
+        t.progress = "타임라인 생성 중..."
+        chapters, ch_cost, ch_model = await resolve_chapters(
+            data["native_chapters"], data["segments"], ai)
         t.progress = "저장 중..."
         note_id = await save_note(
             db_path=config.DB_PATH, vault_path=config.VAULT_PATH,
             source_type="youtube", source_url=url,
-            result=result, ai_provider=ai.name(), project_id=pid,
+            result=result, ai_provider=ai.name(), project_id=pid, timeline=chapters,
         )
         await record_api_cost(
             config.DB_PATH, ai.name(),
@@ -52,6 +56,11 @@ async def analyze_youtube(
             input_tokens=0, output_tokens=0, cost_usd=result.cost_usd,
             item_id=note_id,
         )
+        if ch_cost > 0:
+            await record_api_cost(
+                config.DB_PATH, ai.name(), model=ch_model,
+                input_tokens=0, output_tokens=0, cost_usd=ch_cost, item_id=note_id,
+            )
         t.note_id = note_id
 
     await enqueue(task, do_work)
