@@ -56,11 +56,11 @@ CREATE TABLE IF NOT EXISTS projects (
 """
 
 
-async def _ensure_project_id_column(db) -> None:
+async def _ensure_column(db, column: str, decl: str) -> None:
     cursor = await db.execute("PRAGMA table_info(items)")
     cols = [r[1] for r in await cursor.fetchall()]
-    if "project_id" not in cols:
-        await db.execute("ALTER TABLE items ADD COLUMN project_id INTEGER")
+    if column not in cols:
+        await db.execute(f"ALTER TABLE items ADD COLUMN {column} {decl}")
 
 
 async def init_db(db_path: str = config.DB_PATH) -> None:
@@ -69,7 +69,8 @@ async def init_db(db_path: str = config.DB_PATH) -> None:
         await db.execute(CREATE_SETTINGS)
         await db.execute(CREATE_API_COSTS)
         await db.execute(CREATE_PROJECTS)
-        await _ensure_project_id_column(db)
+        await _ensure_column(db, "project_id", "INTEGER")
+        await _ensure_column(db, "timeline", "TEXT")
         await db.commit()
 
 
