@@ -7,6 +7,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config = { darkMode: 'class' }</script>
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
 <style>
   :root { --green:#1F6F4A; --sage:#A8CBB2; --sage-light:#EAF4EE; --border:#E2E8E4; --sub:#F3F5F4; }
   [data-theme="dark"] { --green:#34A66A; --sage:#2D6B4A; --sage-light:#14291E; --border:#2D3748; --sub:#1F2937; }
@@ -244,7 +245,28 @@ function deleteProject(id, name) {
 <!-- NOTE DETAIL MODAL -->
 <div id="note-modal"></div>
 <script>
-function closeNoteModal() { document.getElementById('note-modal').innerHTML = ''; }
+let ytPlayer = null;
+function initYtPlayer() {
+  const el = document.getElementById('yt-player');
+  if (!el || !window.YT || !window.YT.Player) return;
+  if (ytPlayer) { try { ytPlayer.destroy(); } catch (e) {} ytPlayer = null; }
+  ytPlayer = new YT.Player('yt-player', {
+    width: '100%', height: '100%',
+    videoId: el.dataset.videoId,
+    playerVars: { rel: 0 },
+  });
+}
+function ytSeek(sec) {
+  if (ytPlayer && ytPlayer.seekTo) { ytPlayer.seekTo(sec, true); ytPlayer.playVideo(); }
+}
+window.onYouTubeIframeAPIReady = function () { window._ytApiReady = true; initYtPlayer(); };
+document.body.addEventListener('htmx:afterSwap', function (e) {
+  if (e.target && e.target.id === 'note-modal') initYtPlayer();
+});
+function closeNoteModal() {
+  if (ytPlayer) { try { ytPlayer.destroy(); } catch (e) {} ytPlayer = null; }
+  document.getElementById('note-modal').innerHTML = '';
+}
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') closeNoteModal();
 });

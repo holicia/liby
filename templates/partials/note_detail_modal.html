@@ -27,6 +27,37 @@
       </div>
     </div>
 
+    <!-- 영상 임베드 + 챕터 -->
+    {% if video_id %}
+    <div class="mb-4">
+      <div class="aspect-video w-full rounded-lg overflow-hidden bg-black mb-3">
+        <div id="yt-player" data-video-id="{{ video_id }}" class="w-full h-full"></div>
+      </div>
+      {% set tl = note.timeline if note.timeline is not string else (note.timeline | fromjson) %}
+      {% if tl %}
+      <h3 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">챕터</h3>
+      <ul class="space-y-0.5 max-h-48 overflow-y-auto">
+        {% for ch in tl %}
+        <li>
+          <button type="button" onclick="ytSeek({{ ch.t }})"
+                  class="w-full text-left flex gap-2 text-[12px] text-gray-700 dark:text-gray-300 hover:bg-[#EAF4EE] dark:hover:bg-[#14291E] rounded px-2 py-1 transition-colors">
+            <span class="text-[#1F6F4A] dark:text-[#34A66A] font-mono flex-shrink-0">{{ "%d:%02d"|format(ch.t // 60, ch.t % 60) }}</span>
+            <span class="truncate">{{ ch.label }}</span>
+          </button>
+        </li>
+        {% endfor %}
+      </ul>
+      {% elif note.type == 'youtube' %}
+      <button hx-post="/api/items/{{ note.id }}/timeline"
+              hx-target="#note-modal" hx-swap="innerHTML"
+              class="text-xs bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] border border-[#A8CBB2] dark:border-[#2D6B4A] rounded-lg px-3 py-1.5 font-semibold hover:bg-[#1F6F4A] hover:text-white transition-colors">
+        ⏱ 타임라인 생성
+      </button>
+      <span class="htmx-indicator text-[11px] text-gray-400 ml-2">생성 중...</span>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <!-- 태그 & 주제 -->
     <div class="flex items-center gap-1.5 flex-wrap mb-4">
       {% if note.tags %}
