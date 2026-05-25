@@ -33,7 +33,7 @@ async def test_save_and_get_note(db, tmp_path):
 
     note = await get_note(db, note_id)
     assert note["title"] == "테스트 노트"
-    assert json.loads(note["tags"]) == ["AI"]
+    assert note["tags"] == ["AI"]
 
 @pytest.mark.asyncio
 async def test_save_note_creates_md_file(db, tmp_path):
