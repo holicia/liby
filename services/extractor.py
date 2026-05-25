@@ -20,6 +20,48 @@ def _extract_video_id(url: str) -> str:
     raise ValueError(f"YouTube ID를 추출할 수 없습니다: {url}")
 
 
+def youtube_video_id(url: str) -> str | None:
+    """source_url에서 video_id 추출, 실패 시 None (모달 임베드 판단용)."""
+    try:
+        return _extract_video_id(url)
+    except ValueError:
+        return None
+
+
+def _parse_native_chapters(chapters: list | None) -> list[dict] | None:
+    """yt-dlp info['chapters'] → [{t, label}]. 없으면 None."""
+    if not chapters:
+        return None
+    out = []
+    for c in chapters:
+        start = c.get("start_time")
+        if start is None:
+            continue
+        title = (c.get("title") or "").strip()
+        out.append({"t": int(start), "label": title or "챕터"})
+    return out or None
+
+
+def _build_segments(json3_data: dict) -> list[dict]:
+    """json3 자막 → [{t: 초, text}] 타임스탬프 세그먼트."""
+    segments = []
+    for ev in json3_data.get("events", []):
+        text = "".join(seg.get("utf8", "") for seg in ev.get("segs", [])).strip()
+        if not text or text == "\n":
+            continue
+        segments.append({"t": int(ev.get("tStartMs", 0) // 1000), "text": text})
+    return segments
+
+
+def _segments_to_transcript(segments: list[dict]) -> str:
+    """[{t,text}] → '[m:ss] text' 줄 단위 문자열 (AI 챕터 입력용)."""
+    lines = []
+    for s in segments:
+        m, sec = divmod(int(s["t"]), 60)
+        lines.append(f"[{m}:{sec:02d}] {s['text']}")
+    return "\n".join(lines)
+
+
 def _fetch_transcript_sync(video_id: str) -> str:
     ydl_opts = {"skip_download": True, "quiet": True, "no_warnings": True}
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -90,6 +132,44 @@ async def extract_youtube(url: str) -> tuple[str, str]:
     # yt-dlp는 동기 라이브러리이므로 executor로 실행해 이벤트 루프를 블록하지 않음
     text = await asyncio.get_event_loop().run_in_executor(None, _fetch_transcript_sync, video_id)
     return text, video_id
+
+
+def _fetch_full_sync(video_id: str) -> dict:
+    ydl_opts = {"skip_download": True, "quiet": True, "no_warnings": True}
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+
+    native_chapters = _parse_native_chapters(info.get("chapters"))
+
+    subs = info.get("subtitles", {})
+    auto_subs = info.get("automatic_captions", {})
+    chosen = None
+    for lang in ["ko", "en"]:
+        if lang in subs:
+            chosen = subs[lang]; break
+        if lang in auto_subs:
+            chosen = auto_subs[lang]; break
+    if not chosen:
+        raise ValueError(f"트랜스크립트를 찾을 수 없습니다: {video_id}")
+
+    j3 = next((s for s in chosen if s.get("ext") == "json3"), chosen[0])
+    req = urllib.request.Request(j3["url"], headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+
+    segments = _build_segments(data)
+    text = " ".join(s["text"] for s in segments)
+    return {
+        "text": text,
+        "video_id": video_id,
+        "native_chapters": native_chapters,
+        "segments": segments,
+    }
+
+
+async def extract_youtube_full(url: str) -> dict:
+    video_id = _extract_video_id(url)
+    return await asyncio.get_event_loop().run_in_executor(None, _fetch_full_sync, video_id)
 
 
 def _github_api(path: str) -> dict:

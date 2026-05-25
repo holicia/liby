@@ -1,6 +1,9 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from services.extractor import extract_youtube, extract_pdf, chunk_text
+from services.extractor import (
+    _parse_native_chapters, _build_segments, _segments_to_transcript, youtube_video_id,
+)
 
 
 def test_chunk_text_splits_long_text():
@@ -37,3 +40,32 @@ async def test_extract_pdf_returns_text(tmp_path):
     with patch("services.extractor.fitz.open", return_value=mock_doc):
         text = await extract_pdf("/fake/path.pdf")
     assert "PDF 내용" in text
+
+
+def test_parse_native_chapters_present():
+    raw = [{"start_time": 0, "title": "인트로"}, {"start_time": 12.7, "title": "본론"}]
+    out = _parse_native_chapters(raw)
+    assert out == [{"t": 0, "label": "인트로"}, {"t": 12, "label": "본론"}]
+
+def test_parse_native_chapters_absent():
+    assert _parse_native_chapters(None) is None
+    assert _parse_native_chapters([]) is None
+
+def test_build_segments_from_json3():
+    data = {"events": [
+        {"tStartMs": 0, "segs": [{"utf8": "안녕"}, {"utf8": "하세요"}]},
+        {"tStartMs": 2500, "segs": [{"utf8": "반갑습니다"}]},
+        {"tStartMs": 4000, "segs": [{"utf8": "\n"}]},
+    ]}
+    segs = _build_segments(data)
+    assert segs == [{"t": 0, "text": "안녕하세요"}, {"t": 2, "text": "반갑습니다"}]
+
+def test_segments_to_transcript_formats_timestamps():
+    segs = [{"t": 0, "text": "시작"}, {"t": 75, "text": "중간"}]
+    txt = _segments_to_transcript(segs)
+    assert "[0:00] 시작" in txt
+    assert "[1:15] 중간" in txt
+
+def test_youtube_video_id_ok_and_none():
+    assert youtube_video_id("https://youtu.be/dQw4w9WgXcQ") == "dQw4w9WgXcQ"
+    assert youtube_video_id("not a url") is None
