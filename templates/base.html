@@ -259,7 +259,7 @@ function initYtPlayer() {
 function ytSeek(sec) {
   if (ytPlayer && ytPlayer.seekTo) { ytPlayer.seekTo(sec, true); ytPlayer.playVideo(); }
 }
-window.onYouTubeIframeAPIReady = function () { window._ytApiReady = true; initYtPlayer(); };
+window.onYouTubeIframeAPIReady = function () { initYtPlayer(); };
 document.body.addEventListener('htmx:afterSwap', function (e) {
   if (e.target && e.target.id === 'note-modal') initYtPlayer();
 });

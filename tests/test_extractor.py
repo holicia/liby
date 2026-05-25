@@ -60,7 +60,7 @@ def test_build_segments_from_json3():
     segs = _build_segments(data)
     assert segs == [{"t": 0, "text": "안녕하세요"}, {"t": 2, "text": "반갑습니다"}]
 
-def testsegments_to_transcript_formats_timestamps():
+def test_segments_to_transcript_formats_timestamps():
     segs = [{"t": 0, "text": "시작"}, {"t": 75, "text": "중간"}]
     txt = segments_to_transcript(segs)
     assert "[0:00] 시작" in txt
@@ -80,5 +80,5 @@ def test_build_segments_empty_events_returns_empty():
     assert _build_segments({"events": []}) == []
     assert _build_segments({}) == []
 
-def testsegments_to_transcript_empty_returns_empty_string():
+def test_segments_to_transcript_empty_returns_empty_string():
     assert segments_to_transcript([]) == ""
