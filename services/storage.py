@@ -30,7 +30,7 @@ def _make_md_content(
         f"source: {source_url}",
         f"tags: {json.dumps(result.tags, ensure_ascii=False)}",
         f"topic: {result.suggested_topic}",
-        f"project: {project_name or ''}",
+        *([f"project: {project_name}"] if project_name else []),
         f"ai_provider: {ai_provider}",
         f"summary_mode: {result.summary_mode}",
         f"created: {today}",
