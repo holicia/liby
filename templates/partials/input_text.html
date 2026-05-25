@@ -1,6 +1,7 @@
-<form hx-post="/api/pdf" hx-target="#queue-panel" hx-swap="beforeend" hx-encoding="multipart/form-data" class="flex gap-2 items-center">
-  <input name="file" type="file" accept=".pdf" required
-         class="flex-1 bg-white border border-[#E2E8E4] rounded-lg px-3 py-2 text-xs text-gray-500 dark:bg-gray-800">
+<form hx-post="/api/text" hx-target="#queue-panel" hx-swap="beforeend"
+      hx-on::after-request="this.reset()" class="flex gap-2 items-center">
+  <textarea name="content" required placeholder="텍스트 내용을 붙여넣으세요..."
+            class="flex-1 bg-white border border-[#E2E8E4] rounded-lg px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-[#1F6F4A] dark:bg-gray-800 dark:text-gray-200 h-10 resize-none"></textarea>
   <select name="provider" class="bg-white border border-[#E2E8E4] rounded-lg px-3 py-2.5 text-xs text-gray-500 dark:bg-gray-800">
     <option value="claude">Claude</option>
     <option value="gpt">GPT</option>

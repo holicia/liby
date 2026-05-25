@@ -1,10 +1,13 @@
+import asyncio
+import base64
+import json
 import re
+import urllib.request
 import fitz
-from youtube_transcript_api import YouTubeTranscriptApi
+import yt_dlp
 
 
 def _extract_video_id(url: str) -> str:
-    """Extract YouTube video ID from various URL formats."""
     patterns = [
         r"v=([a-zA-Z0-9_-]{11})",
         r"youtu\.be/([a-zA-Z0-9_-]{11})",
@@ -15,6 +18,41 @@ def _extract_video_id(url: str) -> str:
         if match:
             return match.group(1)
     raise ValueError(f"YouTube ID를 추출할 수 없습니다: {url}")
+
+
+def _fetch_transcript_sync(video_id: str) -> str:
+    ydl_opts = {"skip_download": True, "quiet": True, "no_warnings": True}
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+
+    subs = info.get("subtitles", {})
+    auto_subs = info.get("automatic_captions", {})
+
+    chosen = None
+    for lang in ["ko", "en"]:
+        if lang in subs:
+            chosen = subs[lang]
+            break
+        if lang in auto_subs:
+            chosen = auto_subs[lang]
+            break
+
+    if not chosen:
+        raise ValueError(f"트랜스크립트를 찾을 수 없습니다: {video_id}")
+
+    j3 = next((s for s in chosen if s.get("ext") == "json3"), chosen[0])
+    req = urllib.request.Request(j3["url"], headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        raw = resp.read().decode("utf-8")
+
+    data = json.loads(raw)
+    texts = [
+        seg.get("utf8", "").strip()
+        for ev in data.get("events", [])
+        for seg in ev.get("segs", [])
+        if seg.get("utf8", "").strip() not in ("", "\n")
+    ]
+    return " ".join(texts)
 
 
 def chunk_text(text: str, max_chars: int = 10000) -> list[str]:
@@ -48,11 +86,70 @@ def chunk_text(text: str, max_chars: int = 10000) -> list[str]:
 
 
 async def extract_youtube(url: str) -> tuple[str, str]:
-    """Extract transcript from YouTube video and return (text, video_id)."""
     video_id = _extract_video_id(url)
-    transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["ko", "en"])
-    text = " ".join(t["text"] for t in transcript)
+    # yt-dlp는 동기 라이브러리이므로 executor로 실행해 이벤트 루프를 블록하지 않음
+    text = await asyncio.get_event_loop().run_in_executor(None, _fetch_transcript_sync, video_id)
     return text, video_id
+
+
+def _github_api(path: str) -> dict:
+    url = f"https://api.github.com{path}"
+    req = urllib.request.Request(
+        url,
+        headers={"Accept": "application/vnd.github+json", "User-Agent": "liby/1.0"},
+    )
+    with urllib.request.urlopen(req, timeout=15) as r:
+        return json.loads(r.read())
+
+
+def _fetch_github_sync(url: str) -> tuple[str, str]:
+    m = re.match(r"https?://github\.com/([^/]+)/([^/?\s#]+)", url)
+    if not m:
+        raise ValueError(f"GitHub URL 형식이 올바르지 않습니다: {url}")
+    owner, repo = m.group(1), m.group(2).removesuffix(".git")
+
+    meta = _github_api(f"/repos/{owner}/{repo}")
+
+    try:
+        readme_data = _github_api(f"/repos/{owner}/{repo}/readme")
+        readme = base64.b64decode(readme_data["content"]).decode("utf-8", errors="ignore")[:8000]
+    except Exception:
+        readme = "(README 없음)"
+
+    try:
+        tree_data = _github_api(f"/repos/{owner}/{repo}/git/trees/HEAD?recursive=1")
+        files = [t["path"] for t in tree_data.get("tree", []) if t["type"] == "blob"]
+    except Exception:
+        files = []
+
+    KEY_FILES = ["requirements.txt", "pyproject.toml", "package.json", "Cargo.toml", "go.mod", "setup.py"]
+    key_contents = []
+    for kf in KEY_FILES:
+        if kf in files:
+            try:
+                fd = _github_api(f"/repos/{owner}/{repo}/contents/{kf}")
+                content = base64.b64decode(fd["content"]).decode("utf-8", errors="ignore")[:2000]
+                key_contents.append(f"=== {kf} ===\n{content}")
+            except Exception:
+                pass
+
+    parts = [
+        f"# {owner}/{repo}",
+        f"설명: {meta.get('description') or '없음'}",
+        f"주 언어: {meta.get('language') or '미분류'}",
+        f"토픽: {', '.join(meta.get('topics', []) or [])}",
+        f"스타: {meta.get('stargazers_count', 0)}",
+        f"\n## README\n{readme}",
+        f"\n## 파일 구조 ({len(files)}개)\n" + "\n".join(files[:80]),
+    ]
+    if key_contents:
+        parts.append("\n## 주요 설정 파일\n" + "\n\n".join(key_contents))
+
+    return "\n".join(parts), f"{owner}/{repo}"
+
+
+async def extract_github_repo(url: str) -> tuple[str, str]:
+    return await asyncio.get_event_loop().run_in_executor(None, _fetch_github_sync, url)
 
 
 async def extract_pdf(file_path: str) -> str:

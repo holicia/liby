@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}liby{% endblock %}</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { darkMode: 'class' }</script>
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 <style>
   :root { --green:#1F6F4A; --sage:#A8CBB2; --sage-light:#EAF4EE; --border:#E2E8E4; --sub:#F3F5F4; }
@@ -19,7 +20,7 @@
 <nav class="sticky top-0 z-10 bg-white border-b border-[#E2E8E4] flex items-stretch h-12 px-5 shadow-sm dark:bg-gray-900 dark:border-gray-700">
   <span class="font-extrabold text-[17px] text-[#1F6F4A] flex items-center pr-5 border-r border-[#E2E8E4] mr-2">📚 liby</span>
   <div class="flex items-stretch">
-    {% for tab in [("YouTube","youtube"),("PDF","pdf"),("Markdown","markdown"),("Code","code")] %}
+    {% for tab in [("YouTube","youtube"),("PDF","pdf"),("Code","code"),("Text","text")] %}
     <button
       class="px-4 text-xs font-medium text-gray-400 border-b-2 border-transparent hover:text-gray-700 transition-colors"
       hx-get="/partials/input/{{ tab[1] }}"
@@ -39,14 +40,18 @@
   {% include "partials/input_youtube.html" %}
 </div>
 
+<!-- QUEUE PANEL -->
+<div id="queue-panel" class="empty:hidden px-5 py-3 space-y-2 border-b border-[#E2E8E4] bg-white dark:bg-gray-950 dark:border-gray-700"></div>
+
 <!-- LAYOUT -->
 <div class="flex" style="height: calc(100vh - 96px);">
 
   <!-- SIDEBAR -->
   <aside class="w-52 border-r border-[#E2E8E4] bg-white flex flex-col dark:bg-gray-900 dark:border-gray-700">
     <div class="flex-1 overflow-y-auto p-3 space-y-0.5">
-      <a href="/"
-         class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#EAF4EE] text-[#1F6F4A] font-semibold text-xs cursor-pointer">
+      <a id="all-notes-link"
+         onclick="enterHomeView()"
+         class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] font-semibold text-xs cursor-pointer">
         <span class="w-2 h-2 rounded-full bg-[#1F6F4A]"></span>전체 노트
         <span class="ml-auto bg-[#1F6F4A] text-white text-[10px] px-2 py-0.5 rounded-full font-bold" id="total-count">0</span>
       </a>
@@ -85,8 +90,10 @@
 function toggleTheme() {
   const html = document.documentElement;
   const btn = document.getElementById("theme-btn");
-  html.setAttribute("data-theme", html.getAttribute("data-theme") === "light" ? "dark" : "light");
-  btn.textContent = html.getAttribute("data-theme") === "dark" ? "라이트 모드" : "다크 모드";
+  const isDark = !html.classList.contains("dark");
+  html.classList.toggle("dark", isDark);
+  html.setAttribute("data-theme", isDark ? "dark" : "light");
+  btn.textContent = isDark ? "라이트 모드" : "다크 모드";
 }
 function setActiveTab(el) {
   document.querySelectorAll("nav button").forEach(b => b.classList.remove("border-[#1F6F4A]", "text-[#1F6F4A]", "font-semibold"));
@@ -117,15 +124,52 @@ function renderTagChips() {
   ).join("");
 }
 function refreshNotes() {
+  if (activeTags.length === 0) { enterHomeView(); return; }
+  const label = document.getElementById('section-label');
+  if (label) label.textContent = '검색 결과';
+  const rec = document.getElementById('recommended-section');
+  if (rec) rec.style.display = 'none';
   const params = new URLSearchParams();
   activeTags.forEach(t => params.append("tags", t));
   htmx.ajax("GET", `/api/items?${params}`, { target: "#note-list", swap: "innerHTML" });
+  const link = document.getElementById('all-notes-link');
+  link.classList.remove('bg-[#EAF4EE]','text-[#1F6F4A]','dark:bg-[#14291E]','dark:text-[#34A66A]','font-semibold');
+  link.classList.add('text-gray-500','dark:text-gray-400');
 }
 function promptNewTopic() {
   const name = prompt("새 주제 이름을 입력하세요:");
   if (name) refreshNotes();
 }
+function enterTopicView(topic) {
+  const label = document.getElementById('section-label');
+  if (label) label.textContent = topic;
+  const rec = document.getElementById('recommended-section');
+  if (rec) rec.style.display = 'none';
+  htmx.ajax('GET', `/api/items?topic=${encodeURIComponent(topic)}`, { target: '#note-list', swap: 'innerHTML' });
+  // 사이드바 활성 상태 업데이트
+  document.getElementById('all-notes-link').classList.remove('bg-[#EAF4EE]','text-[#1F6F4A]','dark:bg-[#14291E]','dark:text-[#34A66A]','font-semibold');
+  document.getElementById('all-notes-link').classList.add('text-gray-500','dark:text-gray-400');
+}
+function enterHomeView() {
+  const label = document.getElementById('section-label');
+  if (label) label.textContent = '최근 업데이트';
+  const rec = document.getElementById('recommended-section');
+  if (rec) rec.style.display = '';
+  htmx.ajax('GET', '/api/items', { target: '#note-list', swap: 'innerHTML' });
+  // 사이드바 활성 상태 복원
+  document.getElementById('all-notes-link').classList.add('bg-[#EAF4EE]','text-[#1F6F4A]','dark:bg-[#14291E]','dark:text-[#34A66A]','font-semibold');
+  document.getElementById('all-notes-link').classList.remove('text-gray-500','dark:text-gray-400');
+}
 </script>
 {% block scripts %}{% endblock %}
+
+<!-- NOTE DETAIL MODAL -->
+<div id="note-modal"></div>
+<script>
+function closeNoteModal() { document.getElementById('note-modal').innerHTML = ''; }
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeNoteModal();
+});
+</script>
 </body>
 </html>

@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Query, Request
+from fastapi.responses import JSONResponse
 from typing import Optional
+import os
 import config
 from services.ai import get_provider
 from services.storage import (
@@ -39,6 +41,14 @@ async def get_random_notes_partial(request: Request):
         {"notes": notes},
     )
 
+@router.get("/{note_id}/detail")
+async def get_item_detail(request: Request, note_id: int):
+    note = await get_note(config.DB_PATH, note_id)
+    return templates.TemplateResponse(
+        request, "partials/note_detail_modal.html",
+        {"note": note},
+    )
+
 @router.get("/{note_id}")
 async def get_item(request: Request, note_id: int):
     note = await get_note(config.DB_PATH, note_id)
@@ -46,6 +56,17 @@ async def get_item(request: Request, note_id: int):
         request, "partials/note_card.html",
         {"note": note},
     )
+
+@router.post("/{note_id}/open-md")
+async def open_md_file(note_id: int):
+    note = await get_note(config.DB_PATH, note_id)
+    if not note or not note.get("md_file_path"):
+        return JSONResponse({"error": "파일을 찾을 수 없습니다."}, status_code=404)
+    path = note["md_file_path"]
+    if not os.path.exists(path):
+        return JSONResponse({"error": f"파일이 존재하지 않습니다: {path}"}, status_code=404)
+    os.startfile(path)
+    return JSONResponse({"ok": True})
 
 @router.post("/{note_id}/upgrade")
 async def upgrade_note(request: Request, note_id: int):

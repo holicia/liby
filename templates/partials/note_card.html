@@ -1,6 +1,6 @@
 {% if note %}
-<div class="bg-[#F3F5F4] border border-[#E2E8E4] rounded-xl p-4 flex gap-3 items-start hover:border-[#A8CBB2] hover:shadow-sm transition-all cursor-pointer dark:bg-gray-800 dark:border-gray-700">
-  <span class="flex-shrink-0 mt-0.5 bg-[#EAF4EE] text-[#1F6F4A] text-[10px] font-bold px-2 py-1 rounded border border-[#A8CBB2]">{{ note.type | upper }}</span>
+<div class="note-card bg-[#F3F5F4] border border-[#E2E8E4] rounded-xl p-4 flex gap-3 items-start hover:border-[#A8CBB2] hover:shadow-sm transition-all cursor-pointer dark:bg-gray-800 dark:border-gray-700">
+  <span class="flex-shrink-0 mt-0.5 bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] text-[10px] font-bold px-2 py-1 rounded border border-[#A8CBB2] dark:border-[#2D6B4A]">{{ note.type | upper }}</span>
   <div class="flex-1">
     <div class="font-semibold text-[13px] text-[#1F2937] mb-1 dark:text-gray-100">{{ note.title }}</div>
     <div class="text-[10px] text-gray-400 mb-2 flex items-center gap-2">
@@ -16,31 +16,31 @@
     {% endif %}
     <div class="flex items-center gap-1.5 flex-wrap">
       {% if note.tags %}
-        {% if note.tags is string %}
-          {% set tag_list = note.tags | tojson | fromjson %}
-        {% else %}
-          {% set tag_list = note.tags %}
-        {% endif %}
+        {% set tag_list = note.tags if note.tags is not string else (note.tags | fromjson) %}
         {% for tag in tag_list[:3] %}
-        <span class="text-[10px] bg-[#EAF4EE] text-[#1F6F4A] px-2 py-0.5 rounded font-medium">{{ tag }}</span>
+        <span class="text-[10px] bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] px-2 py-0.5 rounded font-medium">{{ tag }}</span>
         {% endfor %}
       {% endif %}
       {% if note.topic %}
-      <span class="text-[10px] bg-[#EAF4EE] text-[#1F6F4A] border border-[#A8CBB2] px-2 py-0.5 rounded font-semibold">{{ note.topic }}</span>
+      <span class="text-[10px] bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] border border-[#A8CBB2] dark:border-[#2D6B4A] px-2 py-0.5 rounded font-semibold">{{ note.topic }}</span>
       {% endif %}
       <span class="ml-auto text-[10px] text-gray-400">${{ "%.3f"|format(note.cost_usd or 0) }}</span>
     </div>
   </div>
   <div class="flex flex-col gap-1 flex-shrink-0">
-    <button class="text-[10px] bg-white border border-[#E2E8E4] rounded px-2.5 py-1 text-gray-500 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] hover:border-[#A8CBB2] transition-colors dark:bg-gray-700">전체 보기</button>
+    <button class="text-[10px] bg-white border border-[#E2E8E4] rounded px-2.5 py-1 text-gray-500 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] hover:border-[#A8CBB2] transition-colors dark:bg-gray-700"
+            hx-get="/api/items/{{ note.id }}/detail"
+            hx-target="#note-modal"
+            hx-swap="innerHTML">전체 보기</button>
     {% if note.summary_mode == 'quick' %}
     <button class="text-[10px] bg-[#1F6F4A] text-white rounded px-2.5 py-1 font-semibold hover:opacity-90"
             hx-post="/api/items/{{ note.id }}/upgrade"
-            hx-target="closest div.flex"
+            hx-target="closest .note-card"
             hx-swap="outerHTML">상세 정리</button>
-    {% else %}
-    <button class="text-[10px] bg-white border border-[#E2E8E4] rounded px-2.5 py-1 text-gray-500 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] transition-colors dark:bg-gray-700">.md 열기</button>
     {% endif %}
+    <button class="text-[10px] bg-white border border-[#E2E8E4] rounded px-2.5 py-1 text-gray-500 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] transition-colors dark:bg-gray-700"
+            hx-post="/api/items/{{ note.id }}/open-md"
+            hx-swap="none">.md 열기</button>
   </div>
 </div>
 {% endif %}

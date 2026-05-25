@@ -1,6 +1,7 @@
-<form class="flex gap-2 items-center">
-  <textarea name="content" placeholder="코드를 붙여넣으세요..."
-            class="flex-1 bg-white border border-[#E2E8E4] rounded-lg px-4 py-2.5 text-sm font-mono text-gray-700 outline-none focus:border-[#1F6F4A] dark:bg-gray-800 dark:text-gray-200 h-10 resize-none"></textarea>
+<form hx-post="/api/code" hx-target="#queue-panel" hx-swap="beforeend" class="flex gap-2 items-center">
+  <input name="url" type="url" required
+         placeholder="GitHub URL을 입력하세요 (예: https://github.com/owner/repo)"
+         class="flex-1 bg-white border border-[#E2E8E4] rounded-lg px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-[#1F6F4A] dark:bg-gray-800 dark:text-gray-200">
   <select name="provider" class="bg-white border border-[#E2E8E4] rounded-lg px-3 py-2.5 text-xs text-gray-500 dark:bg-gray-800">
     <option value="claude">Claude</option>
     <option value="gpt">GPT</option>
@@ -9,7 +10,7 @@
     <option value="quick">빠른 정리</option>
     <option value="detailed">상세 정리</option>
   </select>
-  <button type="button" class="bg-gray-300 text-gray-500 rounded-lg px-5 py-2.5 text-xs font-semibold whitespace-nowrap cursor-not-allowed">
-    준비 중
+  <button type="submit" class="bg-[#1F6F4A] text-white rounded-lg px-5 py-2.5 text-xs font-semibold hover:opacity-90 transition-opacity whitespace-nowrap">
+    분석하기
   </button>
 </form>

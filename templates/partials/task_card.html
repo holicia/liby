@@ -1,0 +1,25 @@
+<div class="note-card bg-[#F3F5F4] border border-[#E2E8E4] rounded-xl px-4 py-3 dark:bg-gray-800 dark:border-gray-700"
+     id="task-{{ task.id }}"
+     hx-get="/api/tasks/{{ task.id }}"
+     hx-trigger="every 1500ms"
+     hx-swap="outerHTML">
+  {% if task.status == 'queued' %}{% set pct = 6 %}
+  {% elif '추출' in task.progress %}{% set pct = 30 %}
+  {% elif '분석' in task.progress %}{% set pct = 65 %}
+  {% elif '저장' in task.progress %}{% set pct = 92 %}
+  {% else %}{% set pct = 15 %}{% endif %}
+  <div class="flex items-center gap-2 mb-2 min-w-0">
+    {% if task.source_type %}
+    <span class="flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A]">{{ task.source_type | upper }}</span>
+    {% endif %}
+    <span class="flex-1 text-[13px] font-semibold text-gray-700 dark:text-gray-200 truncate">{{ task.title or task.progress }}</span>
+    {% if batch_total and batch_total > 1 %}
+    <span class="flex-shrink-0 text-[11px] font-medium text-gray-400">전체 {{ batch_total }}개 중 {{ batch_index }}번째</span>
+    {% endif %}
+  </div>
+  <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+    <div class="h-full rounded-full transition-all duration-500 ease-out bg-[#1F6F4A] dark:bg-[#34A66A] {% if task.status == 'queued' %}animate-pulse opacity-50{% endif %}"
+         style="width: {{ pct }}%"></div>
+  </div>
+  <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">{{ task.progress }}</div>
+</div>

@@ -1,8 +1,14 @@
 import json
 import os
+import re
 from datetime import datetime
 import aiosqlite
 from services.ai.base import SummaryResult
+
+def _safe_filename(title: str) -> str:
+    """제목을 파일명으로 안전하게 변환 (Windows 금지 문자 < > : " / \\ | ? * 및 공백 제거)."""
+    safe = re.sub(r'[<>:"/\\|?*\s]+', "-", title[:40]).strip("-. ")
+    return safe or "untitled"
 
 def _make_md_content(
     source_type: str, source_url: str,
@@ -48,8 +54,7 @@ async def save_note(
     result: SummaryResult, ai_provider: str,
 ) -> int:
     today = datetime.now().strftime("%Y-%m-%d")
-    safe_title = result.title[:40].replace(" ", "-").replace("/", "-")
-    filename = f"{today}-{safe_title}.md"
+    filename = f"{today}-{_safe_filename(result.title)}.md"
     subdir = os.path.join(vault_path, source_type)
     os.makedirs(subdir, exist_ok=True)
     md_path = os.path.join(subdir, filename)
@@ -88,7 +93,7 @@ async def get_note(db_path: str, note_id: int) -> dict | None:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute("SELECT * FROM items WHERE id = ?", (note_id,))
         row = await cursor.fetchone()
-        return dict(row) if row else None
+        return _parse_row(dict(row)) if row else None
 
 async def record_api_cost(
     db_path: str, provider: str, model: str,
@@ -113,6 +118,18 @@ async def get_monthly_cost(db_path: str, provider: str) -> float:
         )
         row = await cursor.fetchone()
         return row[0] if row else 0.0
+
+_JSON_FIELDS = ("tags", "key_points", "sections", "main_arguments",
+                "insights", "questions_raised", "related_concepts", "ai_models")
+
+def _parse_row(row: dict) -> dict:
+    for field in _JSON_FIELDS:
+        if isinstance(row.get(field), str):
+            try:
+                row[field] = json.loads(row[field])
+            except (json.JSONDecodeError, TypeError):
+                pass
+    return row
 
 async def list_notes(
     db_path: str,
@@ -140,7 +157,7 @@ async def list_notes(
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(query, params)
         rows = await cursor.fetchall()
-    return [dict(r) for r in rows]
+    return [_parse_row(dict(r)) for r in rows]
 
 async def upgrade_to_detailed(
     db_path: str, note_id: int, result: SummaryResult
@@ -179,4 +196,4 @@ async def get_random_notes(db_path: str, n: int = 4) -> list[dict]:
             "SELECT * FROM items ORDER BY RANDOM() LIMIT ?", (n,)
         )
         rows = await cursor.fetchall()
-    return [dict(r) for r in rows]
+    return [_parse_row(dict(r)) for r in rows]

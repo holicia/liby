@@ -1,7 +1,17 @@
 import json
+import re
 import anthropic
 from services.ai.base import AIProvider, SummaryResult
 import config
+
+
+def _parse_json(raw: str) -> dict:
+    raw = raw.strip()
+    # Claude가 JSON을 ```json ... ``` 코드 블록으로 감쌀 때 제거
+    if raw.startswith("```"):
+        raw = re.sub(r'^```(?:json)?\n?', '', raw)
+        raw = re.sub(r'\n?```\s*$', '', raw)
+    return json.loads(raw.strip())
 
 TIER2_PROMPT = """다음 내용을 분석하여 노트를 작성하세요.
 기존 주제 목록: {existing_topics}
@@ -15,6 +25,23 @@ JSON으로 응답하세요:
   "summary": "5~10문장 요약",
   "key_points": ["핵심1", "핵심2", "핵심3"],
   "tags": ["태그1", "태그2"],
+  "suggested_topic": "기존_주제_중_하나_또는_새_주제명"}}"""
+
+TIER2_CODE_PROMPT = """다음 GitHub 레포지토리 정보를 분석하여 개발자 노트를 작성하세요.
+기존 주제 목록: {existing_topics}
+
+레포지토리 정보:
+{text}
+
+JSON으로 응답하세요:
+{{"title": "owner/repo — 한 줄 설명",
+  "language": "ko",
+  "word_count": 0,
+  "reading_time_min": 0,
+  "sections": [],
+  "summary": "프로젝트 목적과 핵심 기능을 3~5문장으로 설명",
+  "key_points": ["기술 스택: ...", "주요 기능: ...", "아키텍처 특징: ..."],
+  "tags": ["언어", "프레임워크", "도메인키워드"],
   "suggested_topic": "기존_주제_중_하나_또는_새_주제명"}}"""
 
 TIER3_PROMPT = """다음 요약을 바탕으로 심층 분석을 수행하세요.
@@ -55,20 +82,21 @@ class ClaudeProvider(AIProvider):
         models_used: list[str] = []
 
         model = config.CLAUDE_MODELS["tier2"]
-        prompt = TIER2_PROMPT.format(
+        template = TIER2_CODE_PROMPT if source_type == "code" else TIER2_PROMPT
+        prompt = template.format(
             text=text[:12000],
             existing_topics=", ".join(existing_topics) or "없음",
         )
         resp = await self._client.messages.create(
             model=model,
-            max_tokens=2048,
+            max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
         )
         raw = resp.content[0].text
         total_cost += _calc_cost(model, resp.usage.input_tokens, resp.usage.output_tokens)
         models_used.append(model)
 
-        data = json.loads(raw)
+        data = _parse_json(raw)
         result = SummaryResult(
             title=data.get("title", "제목 없음"),
             language=data.get("language", "ko"),
@@ -107,10 +135,10 @@ class ClaudeProvider(AIProvider):
         prompt = TIER3_PROMPT.format(summary=result.summary)
         resp = await self._client.messages.create(
             model=model,
-            max_tokens=2048,
+            max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
         )
-        data = json.loads(resp.content[0].text)
+        data = _parse_json(resp.content[0].text)
         total_cost += _calc_cost(model, resp.usage.input_tokens, resp.usage.output_tokens)
         models_used.append(model)
 

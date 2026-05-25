@@ -5,6 +5,7 @@ import config
 from services.extractor import extract_youtube
 from services.ai import get_provider
 from services.storage import save_note, record_api_cost
+from services.task_queue import new_task, enqueue, queue_meta
 from templates_env import templates
 
 router = APIRouter(prefix="/api/youtube", tags=["youtube"])
@@ -26,35 +27,29 @@ async def analyze_youtube(
     provider: str = Form(config.DEFAULT_AI_PROVIDER),
     mode: str = Form("quick"),
 ):
-    text, video_id = await extract_youtube(url)
+    task = new_task("youtube", url)
     ai = get_provider(provider)
 
-    async with get_db_topics() as topics:
-        result = await ai.summarize(text, "youtube", mode, topics)
+    async def do_work(t):
+        t.progress = "YouTube 자막 추출 중..."
+        text, _video_id = await extract_youtube(url)
+        t.progress = "AI 분석 중..."
+        async with get_db_topics() as topics:
+            result = await ai.summarize(text, "youtube", mode, topics)
+        t.title = result.title
+        t.progress = "저장 중..."
+        note_id = await save_note(
+            db_path=config.DB_PATH, vault_path=config.VAULT_PATH,
+            source_type="youtube", source_url=url,
+            result=result, ai_provider=ai.name(),
+        )
+        await record_api_cost(
+            config.DB_PATH, ai.name(),
+            model=result.models_used[-1] if result.models_used else "",
+            input_tokens=0, output_tokens=0, cost_usd=result.cost_usd,
+            item_id=note_id,
+        )
+        t.note_id = note_id
 
-    note_id = await save_note(
-        db_path=config.DB_PATH, vault_path=config.VAULT_PATH,
-        source_type="youtube", source_url=url,
-        result=result, ai_provider=ai.name(),
-    )
-    await record_api_cost(
-        config.DB_PATH, ai.name(),
-        model=result.models_used[-1] if result.models_used else "",
-        input_tokens=0, output_tokens=0, cost_usd=result.cost_usd,
-        item_id=note_id,
-    )
-    return templates.TemplateResponse(
-        request,
-        "partials/note_card.html",
-        {"note": _result_to_dict(note_id, result, "youtube", url, ai.name())},
-    )
-
-def _result_to_dict(note_id: int, result, source_type: str, source_url: str, ai_provider: str = "claude") -> dict:
-    return {
-        "id": note_id, "type": source_type, "source_url": source_url,
-        "title": result.title, "summary": result.summary,
-        "key_points": result.key_points, "tags": result.tags,
-        "topic": result.suggested_topic, "summary_mode": result.summary_mode,
-        "ai_provider": ai_provider, "cost_usd": result.cost_usd,
-        "created_at": "방금 전",
-    }
+    await enqueue(task, do_work)
+    return templates.TemplateResponse(request, "partials/task_card.html", {"task": task, **queue_meta(task)})
