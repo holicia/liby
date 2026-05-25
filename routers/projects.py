@@ -49,7 +49,10 @@ async def add_project(request: Request, name: str = Form(...)):
 async def edit_project(request: Request, project_id: int, name: str = Form(...)):
     name = name.strip()
     if name:
-        await rename_project(config.DB_PATH, project_id, name)
+        try:
+            await rename_project(config.DB_PATH, project_id, name)
+        except aiosqlite.IntegrityError:
+            pass  # 중복 이름은 무시하고 목록 재렌더
     return await _render_sidebar(request, notify=True)
 
 
