@@ -28,6 +28,17 @@
     </div>
   </div>
   <div class="flex flex-col gap-1 flex-shrink-0">
+    <select name="project_id"
+            class="text-[10px] bg-white border border-[#E2E8E4] rounded px-1.5 py-1 text-gray-500 dark:bg-gray-700 dark:text-gray-300 max-w-[110px]"
+            hx-post="/api/items/{{ note.id }}/project"
+            hx-trigger="change"
+            hx-target="closest .note-card"
+            hx-swap="outerHTML">
+      <option value="" {% if not note.project_id %}selected{% endif %}>미분류</option>
+      {% for p in projects or [] %}
+      <option value="{{ p.id }}" {% if note.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+      {% endfor %}
+    </select>
     <button class="text-[10px] bg-white border border-[#E2E8E4] rounded px-2.5 py-1 text-gray-500 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] hover:border-[#A8CBB2] transition-colors dark:bg-gray-700"
             hx-get="/api/items/{{ note.id }}/detail"
             hx-target="#note-modal"

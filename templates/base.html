@@ -40,6 +40,15 @@
   {% include "partials/input_youtube.html" %}
 </div>
 
+<div class="bg-[#EAF4EE] dark:bg-[#14291E] border-b border-[#E2E8E4] dark:border-gray-700 px-5 py-1.5 flex items-center gap-2">
+  <span class="text-[11px] text-gray-500 dark:text-gray-400">현재 프로젝트</span>
+  <select id="current-project" name="project_id"
+          class="text-xs bg-white border border-[#E2E8E4] rounded-lg px-2 py-1 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+          hx-get="/api/projects/options" hx-trigger="load, projectsChanged from:body" hx-swap="innerHTML">
+    <option value="">(프로젝트 없음)</option>
+  </select>
+</div>
+
 <!-- QUEUE PANEL -->
 <div id="queue-panel" class="empty:hidden px-5 py-3 space-y-2 border-b border-[#E2E8E4] bg-white dark:bg-gray-950 dark:border-gray-700"></div>
 
@@ -49,21 +58,33 @@
   <!-- SIDEBAR -->
   <aside class="w-52 border-r border-[#E2E8E4] bg-white flex flex-col dark:bg-gray-900 dark:border-gray-700">
     <div class="flex-1 overflow-y-auto p-3 space-y-0.5">
-      <a id="all-notes-link"
-         onclick="enterHomeView()"
-         class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] font-semibold text-xs cursor-pointer">
-        <span class="w-2 h-2 rounded-full bg-[#1F6F4A]"></span>전체 노트
-        <span class="ml-auto bg-[#1F6F4A] text-white text-[10px] px-2 py-0.5 rounded-full font-bold" id="total-count">0</span>
-      </a>
-
-      <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2 pt-3 pb-1">주제별</p>
-      <div id="topic-list"
-           hx-get="/api/items/topics"
-           hx-trigger="load"
-           hx-swap="innerHTML">
+      <div class="flex gap-1 p-1 mb-2 bg-[#F3F5F4] dark:bg-gray-800 rounded-lg text-[11px]">
+        <button id="mode-topic-btn" onclick="setSidebarMode('topic')"
+                class="flex-1 py-1 rounded-md font-semibold bg-white text-[#1F6F4A] dark:bg-gray-700 dark:text-[#34A66A]">주제별</button>
+        <button id="mode-project-btn" onclick="setSidebarMode('project')"
+                class="flex-1 py-1 rounded-md text-gray-500 dark:text-gray-400">프로젝트별</button>
       </div>
-      <button class="w-full text-center text-xs text-gray-400 border border-dashed border-[#E2E8E4] rounded-lg py-1.5 mt-1 hover:border-[#1F6F4A] hover:text-[#1F6F4A] transition-colors"
-              onclick="promptNewTopic()">+ 새 주제 추가</button>
+
+      <div id="topic-mode">
+        <a id="all-notes-link"
+           onclick="enterHomeView()"
+           class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] font-semibold text-xs cursor-pointer">
+          <span class="w-2 h-2 rounded-full bg-[#1F6F4A]"></span>전체 노트
+          <span class="ml-auto bg-[#1F6F4A] text-white text-[10px] px-2 py-0.5 rounded-full font-bold" id="total-count">0</span>
+        </a>
+
+        <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2 pt-3 pb-1">주제별</p>
+        <div id="topic-list"
+             hx-get="/api/items/topics"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+        </div>
+        <button class="w-full text-center text-xs text-gray-400 border border-dashed border-[#E2E8E4] rounded-lg py-1.5 mt-1 hover:border-[#1F6F4A] hover:text-[#1F6F4A] transition-colors"
+                onclick="promptNewTopic()">+ 새 주제 추가</button>
+      </div>
+
+      <div id="project-mode" class="hidden"
+           hx-get="/api/projects" hx-trigger="load, projectsChanged from:body" hx-swap="innerHTML"></div>
 
       <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2 pt-4 pb-1">태그 검색</p>
       <input type="text" placeholder="태그 입력..."
@@ -159,6 +180,54 @@ function enterHomeView() {
   // 사이드바 활성 상태 복원
   document.getElementById('all-notes-link').classList.add('bg-[#EAF4EE]','text-[#1F6F4A]','dark:bg-[#14291E]','dark:text-[#34A66A]','font-semibold');
   document.getElementById('all-notes-link').classList.remove('text-gray-500','dark:text-gray-400');
+}
+function setSidebarMode(mode) {
+  const topic = document.getElementById('topic-mode');
+  const project = document.getElementById('project-mode');
+  const tb = document.getElementById('mode-topic-btn');
+  const pb = document.getElementById('mode-project-btn');
+  const on = ['bg-white','text-[#1F6F4A]','dark:bg-gray-700','dark:text-[#34A66A]','font-semibold'];
+  const off = ['text-gray-500','dark:text-gray-400'];
+  if (mode === 'project') {
+    topic.classList.add('hidden'); project.classList.remove('hidden');
+    pb.classList.add(...on); pb.classList.remove(...off);
+    tb.classList.remove(...on); tb.classList.add(...off);
+  } else {
+    project.classList.add('hidden'); topic.classList.remove('hidden');
+    tb.classList.add(...on); tb.classList.remove(...off);
+    pb.classList.remove(...on); pb.classList.add(...off);
+  }
+}
+function enterProjectView(id, name) {
+  const label = document.getElementById('section-label');
+  if (label) label.textContent = name;
+  const rec = document.getElementById('recommended-section');
+  if (rec) rec.style.display = 'none';
+  htmx.ajax('GET', `/api/items?project_id=${encodeURIComponent(id)}`, { target: '#note-list', swap: 'innerHTML' });
+}
+function enterUnassignedView() {
+  const label = document.getElementById('section-label');
+  if (label) label.textContent = '미분류';
+  const rec = document.getElementById('recommended-section');
+  if (rec) rec.style.display = 'none';
+  htmx.ajax('GET', '/api/items?project_id=none', { target: '#note-list', swap: 'innerHTML' });
+}
+function createProject() {
+  const name = prompt('새 프로젝트 이름:');
+  if (name && name.trim()) {
+    htmx.ajax('POST', '/api/projects', { target: '#project-mode', swap: 'innerHTML', values: { name: name.trim() } });
+  }
+}
+function renameProject(id, current) {
+  const name = prompt('프로젝트 이름 변경:', current);
+  if (name && name.trim() && name.trim() !== current) {
+    htmx.ajax('PATCH', `/api/projects/${id}`, { target: '#project-mode', swap: 'innerHTML', values: { name: name.trim() } });
+  }
+}
+function deleteProject(id, name) {
+  if (confirm(`'${name}' 프로젝트를 삭제할까요? 소속 노트는 미분류로 이동합니다.`)) {
+    htmx.ajax('DELETE', `/api/projects/${id}`, { target: '#project-mode', swap: 'innerHTML' });
+  }
 }
 </script>
 {% block scripts %}{% endblock %}

@@ -1,4 +1,4 @@
-<form hx-post="/api/pdf" hx-target="#queue-panel" hx-swap="beforeend" hx-encoding="multipart/form-data" class="flex gap-2 items-center">
+<form hx-post="/api/pdf" hx-target="#queue-panel" hx-swap="beforeend" hx-encoding="multipart/form-data" hx-include="#current-project" class="flex gap-2 items-center">
   <input name="file" type="file" accept=".pdf" required
          class="flex-1 bg-white border border-[#E2E8E4] rounded-lg px-3 py-2 text-xs text-gray-500 dark:bg-gray-800">
   <select name="provider" class="bg-white border border-[#E2E8E4] rounded-lg px-3 py-2.5 text-xs text-gray-500 dark:bg-gray-800">
