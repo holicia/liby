@@ -208,12 +208,14 @@ async def test_save_note_with_timeline(db, tmp_path):
     note = await get_note(db, nid)
     assert note["timeline"] == chapters
 
+
 @pytest.mark.asyncio
 async def test_save_note_timeline_defaults_empty(db, tmp_path):
     nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="pdf",
                           source_url="u", result=make_result(), ai_provider="claude")
     note = await get_note(db, nid)
-    assert note["timeline"] in (None, [], "")
+    assert note["timeline"] == []  # 항상 json.dumps([]) → []로 round-trip
+
 
 @pytest.mark.asyncio
 async def test_set_timeline_updates(db, tmp_path):
