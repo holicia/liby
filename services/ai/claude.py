@@ -44,6 +44,15 @@ JSON으로 응답하세요:
   "tags": ["언어", "프레임워크", "도메인키워드"],
   "suggested_topic": "기존_주제_중_하나_또는_새_주제명"}}"""
 
+CHAPTERS_PROMPT = """다음은 타임스탬프가 붙은 영상 자막입니다. 영상을 5~12개의 의미 단위 챕터로 나누세요.
+각 챕터는 시작 시각(초)과 짧은 제목(라벨)으로 표현합니다. 시간 오름차순, 첫 챕터는 t=0.
+
+자막:
+{transcript}
+
+JSON으로만 응답하세요:
+{{"chapters": [{{"t": 0, "label": "인트로"}}, {{"t": 150, "label": "핵심 개념"}}]}}"""
+
 TIER3_PROMPT = """다음 요약을 바탕으로 심층 분석을 수행하세요.
 
 요약: {summary}
@@ -116,6 +125,22 @@ class ClaudeProvider(AIProvider):
             result = await self._run_tier3(result, total_cost, models_used)
 
         return result
+
+    async def generate_chapters(self, transcript: str) -> tuple[list[dict], float, str]:
+        model = config.CLAUDE_MODELS["tier2"]
+        prompt = CHAPTERS_PROMPT.format(transcript=transcript[:14000])
+        resp = await self._client.messages.create(
+            model=model, max_tokens=2048,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        data = _parse_json(resp.content[0].text)
+        cost = _calc_cost(model, resp.usage.input_tokens, resp.usage.output_tokens)
+        chapters = [
+            {"t": int(c["t"]), "label": str(c.get("label", "")).strip()}
+            for c in data.get("chapters", []) if "t" in c
+        ]
+        chapters.sort(key=lambda c: c["t"])
+        return chapters, cost, model
 
     async def run_tier3(self, summary: str) -> SummaryResult:
         empty = SummaryResult(

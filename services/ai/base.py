@@ -42,3 +42,7 @@ class AIProvider(ABC):
     @abstractmethod
     def name(self) -> str:
         ...
+
+    async def generate_chapters(self, transcript: str) -> tuple[list[dict], float, str]:
+        """타임스탬프 자막 → [{t,label}] 챕터. 기본은 빈 결과(프로바이더가 오버라이드)."""
+        return [], 0.0, ""

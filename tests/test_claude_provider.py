@@ -56,3 +56,16 @@ async def test_summarize_quick_mode_skips_tier3(provider):
 
 def test_provider_name(provider):
     assert provider.name() == "claude"
+
+@pytest.mark.asyncio
+async def test_generate_chapters_parses_json(provider):
+    mock_response = MagicMock()
+    mock_response.content = [MagicMock(text="""
+{"chapters": [{"t": 0, "label": "인트로"}, {"t": 150, "label": "핵심 개념"}]}
+""")]
+    mock_response.usage = MagicMock(input_tokens=200, output_tokens=80)
+    with patch.object(provider._client.messages, "create", new_callable=AsyncMock, return_value=mock_response):
+        chapters, cost, model = await provider.generate_chapters("[0:00] 안녕\n[2:30] 개념")
+    assert chapters == [{"t": 0, "label": "인트로"}, {"t": 150, "label": "핵심 개념"}]
+    assert cost > 0
+    assert model
