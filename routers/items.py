@@ -60,9 +60,11 @@ async def set_item_project(request: Request, note_id: int, project_id: str = For
     await set_note_project(config.DB_PATH, note_id, pid)
     note = await get_note(config.DB_PATH, note_id)
     projects = await list_projects(config.DB_PATH)
-    return templates.TemplateResponse(
+    resp = templates.TemplateResponse(
         request, "partials/note_card.html", {"note": note, "projects": projects},
     )
+    resp.headers["HX-Trigger"] = "projectsChanged"  # 사이드바/드롭다운 카운트 갱신
+    return resp
 
 @router.get("/{note_id}")
 async def get_item(request: Request, note_id: int):
