@@ -7,6 +7,7 @@ from services.ai import get_provider
 from services.storage import save_note, record_api_cost
 from services.task_queue import new_task, enqueue, queue_meta
 from routers.youtube import get_db_topics
+from routers._utils import parse_project_id
 from templates_env import templates
 
 router = APIRouter(prefix="/api/pdf", tags=["pdf"])
@@ -21,7 +22,7 @@ async def analyze_pdf(
 ):
     file_bytes = await file.read()
     filename = file.filename or "unknown.pdf"
-    pid = int(project_id) if project_id.strip() else None
+    pid = parse_project_id(project_id)
     task = new_task("pdf", filename)
     ai = get_provider(provider)
 

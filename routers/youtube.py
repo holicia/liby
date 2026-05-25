@@ -6,6 +6,7 @@ from services.extractor import extract_youtube
 from services.ai import get_provider
 from services.storage import save_note, record_api_cost
 from services.task_queue import new_task, enqueue, queue_meta
+from routers._utils import parse_project_id
 from templates_env import templates
 
 router = APIRouter(prefix="/api/youtube", tags=["youtube"])
@@ -28,7 +29,7 @@ async def analyze_youtube(
     mode: str = Form("quick"),
     project_id: str = Form(""),
 ):
-    pid = int(project_id) if project_id.strip() else None
+    pid = parse_project_id(project_id)
     task = new_task("youtube", url)
     ai = get_provider(provider)
 

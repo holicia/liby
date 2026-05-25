@@ -9,6 +9,7 @@ from services.storage import (
     record_api_cost, get_topics, get_random_notes,
     list_projects, set_note_project,
 )
+from routers._utils import parse_project_id
 from templates_env import templates
 
 router = APIRouter(prefix="/api/items", tags=["items"])
@@ -55,7 +56,7 @@ async def get_item_detail(request: Request, note_id: int):
 
 @router.post("/{note_id}/project")
 async def set_item_project(request: Request, note_id: int, project_id: str = Form("")):
-    pid = int(project_id) if project_id.strip() else None
+    pid = parse_project_id(project_id)
     await set_note_project(config.DB_PATH, note_id, pid)
     note = await get_note(config.DB_PATH, note_id)
     projects = await list_projects(config.DB_PATH)
