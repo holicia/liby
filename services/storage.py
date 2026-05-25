@@ -10,9 +10,17 @@ def _safe_filename(title: str) -> str:
     safe = re.sub(r'[<>:"/\\|?*\s]+', "-", title[:40]).strip("-. ")
     return safe or "untitled"
 
+async def _project_name(db, project_id: int | None) -> str | None:
+    if project_id is None:
+        return None
+    cursor = await db.execute("SELECT name FROM projects WHERE id = ?", (project_id,))
+    row = await cursor.fetchone()
+    return row[0] if row else None
+
 def _make_md_content(
     source_type: str, source_url: str,
-    result: SummaryResult, ai_provider: str
+    result: SummaryResult, ai_provider: str,
+    project_name: str | None = None,
 ) -> str:
     today = datetime.now().strftime("%Y-%m-%d")
     lines = [
@@ -22,6 +30,7 @@ def _make_md_content(
         f"source: {source_url}",
         f"tags: {json.dumps(result.tags, ensure_ascii=False)}",
         f"topic: {result.suggested_topic}",
+        f"project: {project_name or ''}",
         f"ai_provider: {ai_provider}",
         f"summary_mode: {result.summary_mode}",
         f"created: {today}",
@@ -52,6 +61,7 @@ async def save_note(
     db_path: str, vault_path: str,
     source_type: str, source_url: str,
     result: SummaryResult, ai_provider: str,
+    project_id: int | None = None,
 ) -> int:
     today = datetime.now().strftime("%Y-%m-%d")
     filename = f"{today}-{_safe_filename(result.title)}.md"
@@ -59,17 +69,18 @@ async def save_note(
     os.makedirs(subdir, exist_ok=True)
     md_path = os.path.join(subdir, filename)
 
-    md_content = _make_md_content(source_type, source_url, result, ai_provider)
-    with open(md_path, "w", encoding="utf-8") as f:
-        f.write(md_content)
-
     async with aiosqlite.connect(db_path) as db:
+        proj_name = await _project_name(db, project_id)
+        md_content = _make_md_content(source_type, source_url, result, ai_provider, proj_name)
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(md_content)
+
         cursor = await db.execute(
             """INSERT INTO items
                (type, title, source_url, summary, key_points, sections, tags, topic,
                 summary_mode, main_arguments, insights, questions_raised,
-                related_concepts, ai_provider, ai_models, api_cost_usd, md_file_path)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                related_concepts, ai_provider, ai_models, api_cost_usd, md_file_path, project_id)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 source_type, result.title, source_url, result.summary,
                 json.dumps(result.key_points, ensure_ascii=False),
@@ -82,7 +93,7 @@ async def save_note(
                 json.dumps(result.related_concepts or [], ensure_ascii=False),
                 ai_provider,
                 json.dumps(result.models_used, ensure_ascii=False),
-                result.cost_usd, md_path,
+                result.cost_usd, md_path, project_id,
             )
         )
         await db.commit()
@@ -136,6 +147,7 @@ async def list_notes(
     topic: str | None = None,
     tags: list[str] | None = None,
     search: str | None = None,
+    project_id: int | str | None = None,
     limit: int = 50,
 ) -> list[dict]:
     query = "SELECT * FROM items WHERE 1=1"
@@ -143,6 +155,11 @@ async def list_notes(
     if topic:
         query += " AND topic = ?"
         params.append(topic)
+    if project_id == "none":
+        query += " AND project_id IS NULL"
+    elif project_id is not None:
+        query += " AND project_id = ?"
+        params.append(int(project_id))
     if search:
         query += " AND (title LIKE ? OR summary LIKE ?)"
         params.extend([f"%{search}%", f"%{search}%"])
