@@ -53,7 +53,7 @@ def _build_segments(json3_data: dict) -> list[dict]:
     return segments
 
 
-def _segments_to_transcript(segments: list[dict]) -> str:
+def segments_to_transcript(segments: list[dict]) -> str:
     """[{t,text}] → '[m:ss] text' 줄 단위 문자열 (AI 챕터 입력용)."""
     lines = []
     for s in segments:

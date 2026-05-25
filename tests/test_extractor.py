@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from services.extractor import extract_youtube, extract_pdf, chunk_text
 from services.extractor import (
-    _parse_native_chapters, _build_segments, _segments_to_transcript, youtube_video_id,
+    _parse_native_chapters, _build_segments, segments_to_transcript, youtube_video_id,
 )
 
 
@@ -60,9 +60,9 @@ def test_build_segments_from_json3():
     segs = _build_segments(data)
     assert segs == [{"t": 0, "text": "안녕하세요"}, {"t": 2, "text": "반갑습니다"}]
 
-def test_segments_to_transcript_formats_timestamps():
+def testsegments_to_transcript_formats_timestamps():
     segs = [{"t": 0, "text": "시작"}, {"t": 75, "text": "중간"}]
-    txt = _segments_to_transcript(segs)
+    txt = segments_to_transcript(segs)
     assert "[0:00] 시작" in txt
     assert "[1:15] 중간" in txt
 
@@ -80,5 +80,5 @@ def test_build_segments_empty_events_returns_empty():
     assert _build_segments({"events": []}) == []
     assert _build_segments({}) == []
 
-def test_segments_to_transcript_empty_returns_empty_string():
-    assert _segments_to_transcript([]) == ""
+def testsegments_to_transcript_empty_returns_empty_string():
+    assert segments_to_transcript([]) == ""
