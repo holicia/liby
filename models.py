@@ -47,12 +47,29 @@ CREATE TABLE IF NOT EXISTS api_costs (
 )
 """
 
+CREATE_PROJECTS = """
+CREATE TABLE IF NOT EXISTS projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+"""
+
+
+async def _ensure_project_id_column(db) -> None:
+    cursor = await db.execute("PRAGMA table_info(items)")
+    cols = [r[1] for r in await cursor.fetchall()]
+    if "project_id" not in cols:
+        await db.execute("ALTER TABLE items ADD COLUMN project_id INTEGER")
+
 
 async def init_db(db_path: str = config.DB_PATH) -> None:
     async with aiosqlite.connect(db_path) as db:
         await db.execute(CREATE_ITEMS)
         await db.execute(CREATE_SETTINGS)
         await db.execute(CREATE_API_COSTS)
+        await db.execute(CREATE_PROJECTS)
+        await _ensure_project_id_column(db)
         await db.commit()
 
 
