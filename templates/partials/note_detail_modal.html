@@ -50,10 +50,11 @@
       {% elif note.type == 'youtube' %}
       <button hx-post="/api/items/{{ note.id }}/timeline"
               hx-target="#note-modal" hx-swap="innerHTML"
-              class="text-xs bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] border border-[#A8CBB2] dark:border-[#2D6B4A] rounded-lg px-3 py-1.5 font-semibold hover:bg-[#1F6F4A] hover:text-white transition-colors">
+              hx-indicator="#timeline-spinner" hx-disabled-elt="this"
+              class="text-xs bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] border border-[#A8CBB2] dark:border-[#2D6B4A] rounded-lg px-3 py-1.5 font-semibold hover:bg-[#1F6F4A] hover:text-white transition-colors disabled:opacity-50">
         ⏱ 타임라인 생성
       </button>
-      <span class="htmx-indicator text-[11px] text-gray-400 ml-2">생성 중...</span>
+      <span id="timeline-spinner" class="htmx-indicator text-[11px] text-gray-400 ml-2">생성 중...</span>
       {% endif %}
     </div>
     {% endif %}
