@@ -2,6 +2,10 @@ import pytest
 import json
 import aiosqlite
 from services.storage import save_note, get_note, record_api_cost, get_monthly_cost, list_notes
+from services.storage import (
+    create_project, list_projects, rename_project, delete_project,
+    unassigned_count, set_note_project,
+)
 from services.ai.base import SummaryResult
 from models import init_db
 
@@ -108,3 +112,70 @@ async def test_list_notes_filters_by_project_id(db, tmp_path):
     assert len(in_p) == 1
     unassigned = await list_notes(db, project_id="none")
     assert len(unassigned) == 1
+
+
+@pytest.mark.asyncio
+async def test_create_and_list_projects(db):
+    pid = await create_project(db, "회사 리서치")
+    assert pid > 0
+    projects = await list_projects(db)
+    assert any(p["id"] == pid and p["name"] == "회사 리서치" and p["count"] == 0 for p in projects)
+
+
+@pytest.mark.asyncio
+async def test_create_project_duplicate_raises(db):
+    await create_project(db, "P")
+    with pytest.raises(Exception):
+        await create_project(db, "P")
+
+
+@pytest.mark.asyncio
+async def test_list_projects_counts_notes(db, tmp_path):
+    pid = await create_project(db, "P1")
+    await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="youtube",
+                    source_url="u", result=make_result(), ai_provider="claude", project_id=pid)
+    projects = await list_projects(db)
+    assert next(p for p in projects if p["id"] == pid)["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_unassigned_count(db, tmp_path):
+    await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="youtube",
+                    source_url="u", result=make_result(), ai_provider="claude")
+    assert await unassigned_count(db) == 1
+
+
+@pytest.mark.asyncio
+async def test_set_note_project_updates_db_and_frontmatter(db, tmp_path):
+    pid = await create_project(db, "P1")
+    nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="youtube",
+                          source_url="u", result=make_result(), ai_provider="claude")
+    await set_note_project(db, nid, pid)
+    note = await get_note(db, nid)
+    assert note["project_id"] == pid
+    content = open(note["md_file_path"], encoding="utf-8").read()
+    assert "project: P1" in content
+
+
+@pytest.mark.asyncio
+async def test_rename_project_updates_frontmatter(db, tmp_path):
+    pid = await create_project(db, "Old")
+    nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="youtube",
+                          source_url="u", result=make_result(), ai_provider="claude", project_id=pid)
+    await rename_project(db, pid, "New")
+    projects = await list_projects(db)
+    assert next(p for p in projects if p["id"] == pid)["name"] == "New"
+    content = open((await get_note(db, nid))["md_file_path"], encoding="utf-8").read()
+    assert "project: New" in content
+
+
+@pytest.mark.asyncio
+async def test_delete_project_unassigns_notes(db, tmp_path):
+    pid = await create_project(db, "P1")
+    nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="youtube",
+                          source_url="u", result=make_result(), ai_provider="claude", project_id=pid)
+    await delete_project(db, pid)
+    assert (await get_note(db, nid))["project_id"] is None
+    assert all(p["id"] != pid for p in await list_projects(db))
+    content = open((await get_note(db, nid))["md_file_path"], encoding="utf-8").read()
+    assert "project:" not in content   # 미분류가 되면 project: 줄이 제거됨

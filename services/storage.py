@@ -214,3 +214,88 @@ async def get_random_notes(db_path: str, n: int = 4) -> list[dict]:
         )
         rows = await cursor.fetchall()
     return [_parse_row(dict(r)) for r in rows]
+
+
+def _set_md_project(md_path: str, project_name: str) -> None:
+    """기존 .md frontmatter의 project: 줄을 갱신/삽입(이름 있을 때) 또는 제거(빈 이름)."""
+    if not md_path or not os.path.exists(md_path):
+        return
+    with open(md_path, "r", encoding="utf-8") as f:
+        lines = f.read().split("\n")
+    if not lines or lines[0].strip() != "---":
+        return
+    end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+    if end is None:
+        return
+    existing = next((i for i in range(1, end) if lines[i].startswith("project:")), None)
+    if not project_name:
+        if existing is not None:
+            del lines[existing]
+    else:
+        new_line = f"project: {project_name}"
+        if existing is not None:
+            lines[existing] = new_line
+        else:
+            insert_at = next((i for i in range(1, end) if lines[i].startswith("topic:")), end - 1)
+            lines.insert(insert_at + 1, new_line)
+    with open(md_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+
+async def create_project(db_path: str, name: str) -> int:
+    async with aiosqlite.connect(db_path) as db:
+        cursor = await db.execute("INSERT INTO projects (name) VALUES (?)", (name,))
+        await db.commit()
+        return cursor.lastrowid
+
+
+async def list_projects(db_path: str) -> list[dict]:
+    async with aiosqlite.connect(db_path) as db:
+        cursor = await db.execute(
+            """SELECT p.id, p.name, COUNT(i.id) AS count
+               FROM projects p LEFT JOIN items i ON i.project_id = p.id
+               GROUP BY p.id, p.name ORDER BY p.name"""
+        )
+        rows = await cursor.fetchall()
+    return [{"id": r[0], "name": r[1], "count": r[2]} for r in rows]
+
+
+async def unassigned_count(db_path: str) -> int:
+    async with aiosqlite.connect(db_path) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM items WHERE project_id IS NULL")
+        return (await cursor.fetchone())[0]
+
+
+async def set_note_project(db_path: str, note_id: int, project_id: int | None) -> None:
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute(
+            "UPDATE items SET project_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (project_id, note_id),
+        )
+        await db.commit()
+        name = await _project_name(db, project_id) or ""
+        cursor = await db.execute("SELECT md_file_path FROM items WHERE id = ?", (note_id,))
+        row = await cursor.fetchone()
+    if row and row[0]:
+        _set_md_project(row[0], name)
+
+
+async def rename_project(db_path: str, project_id: int, name: str) -> None:
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute("UPDATE projects SET name = ? WHERE id = ?", (name, project_id))
+        await db.commit()
+        cursor = await db.execute("SELECT md_file_path FROM items WHERE project_id = ?", (project_id,))
+        paths = [r[0] for r in await cursor.fetchall()]
+    for p in paths:
+        _set_md_project(p, name)
+
+
+async def delete_project(db_path: str, project_id: int) -> None:
+    async with aiosqlite.connect(db_path) as db:
+        cursor = await db.execute("SELECT md_file_path FROM items WHERE project_id = ?", (project_id,))
+        paths = [r[0] for r in await cursor.fetchall()]
+        await db.execute("UPDATE items SET project_id = NULL WHERE project_id = ?", (project_id,))
+        await db.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+        await db.commit()
+    for p in paths:
+        _set_md_project(p, "")
