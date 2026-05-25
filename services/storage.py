@@ -229,8 +229,9 @@ def _set_md_project(md_path: str, project_name: str) -> None:
         return
     existing = next((i for i in range(1, end) if lines[i].startswith("project:")), None)
     if not project_name:
-        if existing is not None:
-            del lines[existing]
+        if existing is None:
+            return  # 제거할 줄이 없으면 파일 쓰기 생략
+        del lines[existing]
     else:
         new_line = f"project: {project_name}"
         if existing is not None:
@@ -243,6 +244,9 @@ def _set_md_project(md_path: str, project_name: str) -> None:
 
 
 async def create_project(db_path: str, name: str) -> int:
+    name = name.strip()
+    if not name:
+        raise ValueError("프로젝트 이름은 비어 있을 수 없습니다.")
     async with aiosqlite.connect(db_path) as db:
         cursor = await db.execute("INSERT INTO projects (name) VALUES (?)", (name,))
         await db.commit()
@@ -268,34 +272,39 @@ async def unassigned_count(db_path: str) -> int:
 
 async def set_note_project(db_path: str, note_id: int, project_id: int | None) -> None:
     async with aiosqlite.connect(db_path) as db:
+        name = await _project_name(db, project_id) or ""
+        cursor = await db.execute("SELECT md_file_path FROM items WHERE id = ?", (note_id,))
+        row = await cursor.fetchone()
+        if row and row[0]:
+            _set_md_project(row[0], name)  # 파일 먼저 동기화 후 커밋 (save_note 패턴)
         await db.execute(
             "UPDATE items SET project_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (project_id, note_id),
         )
         await db.commit()
-        name = await _project_name(db, project_id) or ""
-        cursor = await db.execute("SELECT md_file_path FROM items WHERE id = ?", (note_id,))
-        row = await cursor.fetchone()
-    if row and row[0]:
-        _set_md_project(row[0], name)
 
 
 async def rename_project(db_path: str, project_id: int, name: str) -> None:
+    name = name.strip()
+    if not name:
+        raise ValueError("프로젝트 이름은 비어 있을 수 없습니다.")
     async with aiosqlite.connect(db_path) as db:
-        await db.execute("UPDATE projects SET name = ? WHERE id = ?", (name, project_id))
-        await db.commit()
         cursor = await db.execute("SELECT md_file_path FROM items WHERE project_id = ?", (project_id,))
         paths = [r[0] for r in await cursor.fetchall()]
-    for p in paths:
-        _set_md_project(p, name)
+        for p in paths:
+            if p:
+                _set_md_project(p, name)
+        await db.execute("UPDATE projects SET name = ? WHERE id = ?", (name, project_id))
+        await db.commit()
 
 
 async def delete_project(db_path: str, project_id: int) -> None:
     async with aiosqlite.connect(db_path) as db:
         cursor = await db.execute("SELECT md_file_path FROM items WHERE project_id = ?", (project_id,))
         paths = [r[0] for r in await cursor.fetchall()]
+        for p in paths:
+            if p:
+                _set_md_project(p, "")
         await db.execute("UPDATE items SET project_id = NULL WHERE project_id = ?", (project_id,))
         await db.execute("DELETE FROM projects WHERE id = ?", (project_id,))
         await db.commit()
-    for p in paths:
-        _set_md_project(p, "")

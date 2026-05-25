@@ -167,6 +167,25 @@ async def test_rename_project_updates_frontmatter(db, tmp_path):
     assert next(p for p in projects if p["id"] == pid)["name"] == "New"
     content = open((await get_note(db, nid))["md_file_path"], encoding="utf-8").read()
     assert "project: New" in content
+    assert "project: Old" not in content
+
+
+@pytest.mark.asyncio
+async def test_set_note_project_none_removes_frontmatter(db, tmp_path):
+    pid = await create_project(db, "P1")
+    nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="youtube",
+                          source_url="u", result=make_result(), ai_provider="claude", project_id=pid)
+    path = (await get_note(db, nid))["md_file_path"]
+    assert "project: P1" in open(path, encoding="utf-8").read()
+    await set_note_project(db, nid, None)
+    assert (await get_note(db, nid))["project_id"] is None
+    assert "project:" not in open(path, encoding="utf-8").read()
+
+
+@pytest.mark.asyncio
+async def test_create_project_empty_name_raises(db):
+    with pytest.raises(ValueError):
+        await create_project(db, "   ")
 
 
 @pytest.mark.asyncio
