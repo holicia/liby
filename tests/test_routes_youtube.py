@@ -2,28 +2,14 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from httpx import AsyncClient, ASGITransport
 from main import app
-from services.ai.base import SummaryResult
-
-MOCK_RESULT = SummaryResult(
-    title="테스트 영상", language="ko", word_count=200,
-    reading_time_min=2, sections=[],
-    summary="요약 내용입니다.", key_points=["핵심1"],
-    tags=["AI"], suggested_topic="AI/ML",
-    summary_mode="quick", cost_usd=0.002,
-    models_used=["claude-sonnet-4-6"],
-)
 
 @pytest.mark.asyncio
-async def test_analyze_youtube_returns_htmx_fragment():
-    with patch("routers.youtube.extract_youtube", return_value=("자막 텍스트", "abc123")), \
-         patch("routers.youtube.get_provider") as mock_get, \
-         patch("routers.youtube.save_note", return_value=1), \
-         patch("routers.youtube.record_api_cost"):
-        mock_provider = AsyncMock()
-        mock_provider.name.return_value = "claude"
-        mock_provider.summarize = AsyncMock(return_value=MOCK_RESULT)
-        mock_get.return_value = mock_provider
-
+async def test_analyze_youtube_returns_task_card_fragment():
+    # POST는 즉시 큐 작업 카드(task_card)를 반환하고 실제 분석은 워커가 비동기 처리.
+    async def fake_enqueue(task, fn):
+        return None
+    with patch("routers.youtube.enqueue", new=fake_enqueue), \
+         patch("routers.youtube.get_provider"):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.post("/api/youtube", data={
                 "url": "https://youtube.com/watch?v=abc123",
@@ -31,7 +17,7 @@ async def test_analyze_youtube_returns_htmx_fragment():
                 "mode": "quick",
             })
     assert resp.status_code == 200
-    assert "테스트 영상" in resp.text
+    assert "task-" in resp.text  # task_card 프래그먼트(id="task-...")
 
 @pytest.mark.asyncio
 async def test_analyze_youtube_missing_url_returns_422():
