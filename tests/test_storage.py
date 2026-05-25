@@ -1,7 +1,7 @@
 import pytest
 import json
 import aiosqlite
-from services.storage import save_note, get_note, record_api_cost, get_monthly_cost, list_notes
+from services.storage import save_note, get_note, record_api_cost, get_monthly_cost, list_notes, set_timeline
 from services.storage import (
     create_project, list_projects, rename_project, delete_project,
     unassigned_count, set_note_project,
@@ -198,3 +198,27 @@ async def test_delete_project_unassigns_notes(db, tmp_path):
     assert all(p["id"] != pid for p in await list_projects(db))
     content = open((await get_note(db, nid))["md_file_path"], encoding="utf-8").read()
     assert "project:" not in content   # 미분류가 되면 project: 줄이 제거됨
+
+
+@pytest.mark.asyncio
+async def test_save_note_with_timeline(db, tmp_path):
+    chapters = [{"t": 0, "label": "인트로"}, {"t": 90, "label": "본론"}]
+    nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="youtube",
+                          source_url="u", result=make_result(), ai_provider="claude", timeline=chapters)
+    note = await get_note(db, nid)
+    assert note["timeline"] == chapters
+
+@pytest.mark.asyncio
+async def test_save_note_timeline_defaults_empty(db, tmp_path):
+    nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="pdf",
+                          source_url="u", result=make_result(), ai_provider="claude")
+    note = await get_note(db, nid)
+    assert note["timeline"] in (None, [], "")
+
+@pytest.mark.asyncio
+async def test_set_timeline_updates(db, tmp_path):
+    nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="youtube",
+                          source_url="u", result=make_result(), ai_provider="claude")
+    await set_timeline(db, nid, [{"t": 0, "label": "A"}])
+    note = await get_note(db, nid)
+    assert note["timeline"] == [{"t": 0, "label": "A"}]

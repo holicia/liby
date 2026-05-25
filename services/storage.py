@@ -62,6 +62,7 @@ async def save_note(
     source_type: str, source_url: str,
     result: SummaryResult, ai_provider: str,
     project_id: int | None = None,
+    timeline: list | None = None,
 ) -> int:
     today = datetime.now().strftime("%Y-%m-%d")
     filename = f"{today}-{_safe_filename(result.title)}.md"
@@ -79,8 +80,9 @@ async def save_note(
             """INSERT INTO items
                (type, title, source_url, summary, key_points, sections, tags, topic,
                 summary_mode, main_arguments, insights, questions_raised,
-                related_concepts, ai_provider, ai_models, api_cost_usd, md_file_path, project_id)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                related_concepts, ai_provider, ai_models, api_cost_usd, md_file_path, project_id,
+                timeline)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 source_type, result.title, source_url, result.summary,
                 json.dumps(result.key_points, ensure_ascii=False),
@@ -94,6 +96,7 @@ async def save_note(
                 ai_provider,
                 json.dumps(result.models_used, ensure_ascii=False),
                 result.cost_usd, md_path, project_id,
+                json.dumps(timeline or [], ensure_ascii=False),
             )
         )
         await db.commit()
@@ -131,7 +134,7 @@ async def get_monthly_cost(db_path: str, provider: str) -> float:
         return row[0] if row else 0.0
 
 _JSON_FIELDS = ("tags", "key_points", "sections", "main_arguments",
-                "insights", "questions_raised", "related_concepts", "ai_models")
+                "insights", "questions_raised", "related_concepts", "ai_models", "timeline")
 
 def _parse_row(row: dict) -> dict:
     for field in _JSON_FIELDS:
@@ -307,4 +310,13 @@ async def delete_project(db_path: str, project_id: int) -> None:
                 _set_md_project(p, "")
         await db.execute("UPDATE items SET project_id = NULL WHERE project_id = ?", (project_id,))
         await db.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+        await db.commit()
+
+
+async def set_timeline(db_path: str, note_id: int, chapters: list) -> None:
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute(
+            "UPDATE items SET timeline = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (json.dumps(chapters or [], ensure_ascii=False), note_id),
+        )
         await db.commit()
