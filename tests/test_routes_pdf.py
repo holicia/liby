@@ -1,31 +1,18 @@
 import pytest
 import io
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 from httpx import AsyncClient, ASGITransport
 from main import app
-from services.ai.base import SummaryResult
 
-MOCK_RESULT = SummaryResult(
-    title="테스트 PDF", language="ko", word_count=500,
-    reading_time_min=3, sections=[],
-    summary="PDF 요약입니다.", key_points=["핵심1"],
-    tags=["논문"], suggested_topic="논문",
-    summary_mode="quick", cost_usd=0.005,
-    models_used=["claude-sonnet-4-6"],
-)
 
 @pytest.mark.asyncio
-async def test_analyze_pdf_returns_note_card():
+async def test_analyze_pdf_returns_task_card_fragment():
+    # POST는 즉시 큐 작업 카드(task_card)를 반환하고 분석은 워커가 비동기 처리.
     pdf_bytes = b"%PDF-1.4 fake content"
-    with patch("routers.pdf.extract_pdf", return_value="PDF 텍스트"), \
-         patch("routers.pdf.get_provider") as mock_get, \
-         patch("routers.pdf.save_note", return_value=2), \
-         patch("routers.pdf.record_api_cost"):
-        mock_provider = AsyncMock()
-        mock_provider.name.return_value = "claude"
-        mock_provider.summarize = AsyncMock(return_value=MOCK_RESULT)
-        mock_get.return_value = mock_provider
-
+    async def fake_enqueue(task, fn):
+        return None
+    with patch("routers.pdf.enqueue", new=fake_enqueue), \
+         patch("routers.pdf.get_provider"):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.post(
                 "/api/pdf",
@@ -33,4 +20,4 @@ async def test_analyze_pdf_returns_note_card():
                 files={"file": ("test.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
             )
     assert resp.status_code == 200
-    assert "테스트 PDF" in resp.text
+    assert "task-" in resp.text  # task_card 프래그먼트(id="task-...")

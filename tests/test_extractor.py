@@ -1,3 +1,4 @@
+import json
 import pytest
 from unittest.mock import patch, MagicMock
 from services.extractor import extract_youtube, extract_pdf, chunk_text
@@ -19,10 +20,29 @@ def test_chunk_text_short_text_returns_one_chunk():
     assert len(chunks) == 1
 
 
+def _mock_ctx(value):
+    ctx = MagicMock()
+    ctx.__enter__.return_value = value
+    ctx.__exit__.return_value = False
+    return ctx
+
+
 @pytest.mark.asyncio
 async def test_extract_youtube_returns_text_and_video_id():
-    mock_transcript = [{"text": "안녕하세요", "start": 0.0}, {"text": "반갑습니다", "start": 2.0}]
-    with patch("services.extractor.YouTubeTranscriptApi.get_transcript", return_value=mock_transcript):
+    # 현재 extractor는 yt-dlp로 자막 목록을 얻고 json3 URL을 직접 fetch한다.
+    ydl = MagicMock()
+    ydl.extract_info.return_value = {
+        "subtitles": {"ko": [{"ext": "json3", "url": "http://fake/sub.json3"}]},
+    }
+    json3_bytes = json.dumps({"events": [
+        {"tStartMs": 0, "segs": [{"utf8": "안녕하세요"}]},
+        {"tStartMs": 2000, "segs": [{"utf8": "반갑습니다"}]},
+    ]}).encode("utf-8")
+    resp = MagicMock()
+    resp.read.return_value = json3_bytes
+
+    with patch("services.extractor.yt_dlp.YoutubeDL", return_value=_mock_ctx(ydl)), \
+         patch("services.extractor.urllib.request.urlopen", return_value=_mock_ctx(resp)):
         text, video_id = await extract_youtube("https://youtube.com/watch?v=dQw4w9WgXcQ")
     assert "안녕하세요" in text
     assert video_id == "dQw4w9WgXcQ"
