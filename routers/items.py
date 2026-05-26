@@ -11,6 +11,7 @@ from services.storage import (
 )
 from services.extractor import youtube_video_id, extract_youtube_full
 from services.chapters import resolve_chapters
+from services.task_queue import new_task, enqueue, queue_meta
 from routers._utils import parse_project_id
 from templates_env import templates
 
@@ -120,14 +121,29 @@ async def upgrade_note(request: Request, note_id: int):
     if not note:
         return {"error": "노트를 찾을 수 없습니다."}
 
+    task = new_task(note["type"], note["title"])
     provider = get_provider(note.get("ai_provider", config.DEFAULT_AI_PROVIDER))
-    detailed = await provider.run_tier3(note["summary"])
-    await upgrade_to_detailed(config.DB_PATH, note_id, detailed)
-    await record_api_cost(config.DB_PATH, provider.name(), "", 0, 0, detailed.cost_usd, note_id)
 
-    updated_note = await get_note(config.DB_PATH, note_id)
-    projects = await list_projects(config.DB_PATH)
+    async def do_work(t):
+        t.progress = "상세 분석 중..."
+        detailed = await provider.run_tier3(note["summary"])
+        await upgrade_to_detailed(config.DB_PATH, note_id, detailed)
+        await record_api_cost(config.DB_PATH, provider.name(), "", 0, 0, detailed.cost_usd, note_id)
+        # youtube 노트면 신규 분석처럼 챕터 타임라인도 생성 (실패해도 상세정리는 유지)
+        if note.get("type") == "youtube" and note.get("source_url"):
+            t.progress = "타임라인 생성 중..."
+            try:
+                data = await extract_youtube_full(note["source_url"])
+                chapters, cost, model = await resolve_chapters(
+                    data["native_chapters"], data["segments"], provider)
+                await set_timeline(config.DB_PATH, note_id, chapters)
+                if cost > 0:
+                    await record_api_cost(config.DB_PATH, provider.name(), model, 0, 0, cost, note_id)
+            except Exception:
+                pass
+        t.note_id = note_id
+
+    await enqueue(task, do_work)
     return templates.TemplateResponse(
-        request, "partials/note_card.html",
-        {"note": updated_note, "projects": projects},
+        request, "partials/task_card.html", {"task": task, **queue_meta(task)},
     )

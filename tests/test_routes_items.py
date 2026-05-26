@@ -31,28 +31,28 @@ async def test_get_items_with_tag_filter():
 
 @pytest.mark.asyncio
 async def test_upgrade_to_detailed():
-    from services.ai.base import SummaryResult
-    detailed_result = SummaryResult(
-        title="테스트", language="ko", word_count=100,
-        reading_time_min=1, sections=[],
-        summary="요약", key_points=["핵심1"],
-        tags=["AI"], suggested_topic="AI/ML",
-        summary_mode="detailed", cost_usd=0.01,
-        models_used=["claude-opus-4-7"],
-        main_arguments=["논거1"],
-        insights=["인사이트1"],
-        questions_raised=["질문1"],
-        related_concepts=["개념1"],
-    )
-    with patch("routers.items.get_note", return_value=MOCK_NOTE), \
-         patch("routers.items.get_provider") as mock_get, \
-         patch("routers.items.upgrade_to_detailed", return_value=detailed_result), \
-         patch("routers.items.record_api_cost"), \
-         patch("routers.items.list_projects", return_value=[]):
-        mock_get.return_value = AsyncMock()
+    # 상세 정리는 즉시 task_card를 반환하고 실제 작업은 큐에서 비동기 처리.
+    captured = {}
+    async def fake_enqueue(task, fn):
+        captured["fn"] = fn
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE), \
+         patch("routers.items.get_provider", return_value=AsyncMock()), \
+         patch("routers.items.enqueue", new=fake_enqueue), \
+         patch("routers.items.upgrade_to_detailed", new_callable=AsyncMock) as mock_upgrade, \
+         patch("routers.items.record_api_cost", new_callable=AsyncMock), \
+         patch("routers.items.extract_youtube_full", new_callable=AsyncMock,
+               return_value={"text": "x", "video_id": "v", "native_chapters": [{"t": 0, "label": "C"}], "segments": []}), \
+         patch("routers.items.resolve_chapters", new_callable=AsyncMock, return_value=([{"t": 0, "label": "C"}], 0.0, "")), \
+         patch("routers.items.set_timeline", new_callable=AsyncMock) as mock_set:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.post("/api/items/1/upgrade")
-    assert resp.status_code == 200
+        assert resp.status_code == 200
+        assert "task-" in resp.text  # task_card 프래그먼트 반환
+        # 큐에 들어간 do_work를 직접 실행
+        task = MagicMock(); task.note_id = None
+        await captured["fn"](task)
+    mock_upgrade.assert_awaited_once()
+    mock_set.assert_awaited_once()  # MOCK_NOTE는 youtube → 타임라인도 생성
 
 
 @pytest.mark.asyncio

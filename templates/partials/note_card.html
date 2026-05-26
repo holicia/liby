@@ -46,8 +46,8 @@
     {% if note.summary_mode == 'quick' %}
     <button class="text-[10px] bg-[#1F6F4A] text-white rounded px-2.5 py-1 font-semibold hover:opacity-90"
             hx-post="/api/items/{{ note.id }}/upgrade"
-            hx-target="closest .note-card"
-            hx-swap="outerHTML">상세 정리</button>
+            hx-target="#queue-panel"
+            hx-swap="beforeend">상세 정리</button>
     {% endif %}
     <button class="text-[10px] bg-white border border-[#E2E8E4] rounded px-2.5 py-1 text-gray-500 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] transition-colors dark:bg-gray-700"
             hx-post="/api/items/{{ note.id }}/open-md"
