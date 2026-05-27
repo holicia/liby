@@ -224,3 +224,33 @@ async def test_set_timeline_updates(db, tmp_path):
     await set_timeline(db, nid, [{"t": 0, "label": "A"}])
     note = await get_note(db, nid)
     assert note["timeline"] == [{"t": 0, "label": "A"}]
+
+
+def test_make_md_content_hierarchical():
+    from services.storage import _make_md_content
+    from services.ai.base import SummaryResult
+    r = SummaryResult(
+        title="T", language="ko", word_count=0, reading_time_min=0,
+        sections=[{"heading": "1. A", "subsections": [
+            {"heading": "1.1 B", "items": [{"lead": "L", "t": 90, "bullets": ["b1", "b2"]}]}]}],
+        summary="한 줄", key_points=[], tags=["x"], suggested_topic="AI",
+        summary_mode="detailed", insights=["i"], questions_raised=["q"])
+    md = _make_md_content("youtube", "u", r, "claude")
+    assert "## 목차" in md
+    assert "## 1. A" in md
+    assert "### 1.1 B" in md
+    assert "- **L** (1:30)" in md
+    assert "  - b1" in md
+    assert "## 인사이트" in md
+    assert "핵심 논거" not in md
+
+
+def test_make_md_content_quick_stays_flat():
+    from services.storage import _make_md_content
+    from services.ai.base import SummaryResult
+    r = SummaryResult(title="T", language="ko", word_count=0, reading_time_min=0,
+        sections=[], summary="요약", key_points=["k1"], tags=[], suggested_topic="",
+        summary_mode="quick")
+    md = _make_md_content("text", "u", r, "claude")
+    assert "## 핵심 포인트" in md
+    assert "## 목차" not in md

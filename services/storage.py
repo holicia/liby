@@ -36,17 +36,37 @@ def _make_md_content(
         f"created: {today}",
         "---",
         "",
-        "## 요약",
-        result.summary,
-        "",
-        "## 핵심 포인트",
     ]
-    for p in result.key_points:
-        lines.append(f"- {p}")
-    if result.main_arguments:
-        lines += ["", "## 핵심 논거"]
-        for a in result.main_arguments:
-            lines.append(f"- {a}")
+
+    def _ts(sec: int) -> str:
+        h, rem = divmod(int(sec), 3600)
+        m, s = divmod(rem, 60)
+        return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+
+    lines += ["## 요약", result.summary, ""]
+
+    if result.sections:  # detailed 계층 본문
+        lines.append("## 목차")
+        for sec in result.sections:
+            lines.append(f"- {sec['heading']}")
+            for sub in sec.get("subsections", []):
+                lines.append(f"  - {sub['heading']}")
+        lines.append("")
+        for sec in result.sections:
+            lines += [f"## {sec['heading']}", ""]
+            for sub in sec.get("subsections", []):
+                lines += [f"### {sub['heading']}", ""]
+                for it in sub.get("items", []):
+                    ts = f" ({_ts(it['t'])})" if "t" in it else ""
+                    lines.append(f"- **{it['lead']}**{ts}")
+                    for b in it.get("bullets", []):
+                        lines.append(f"  - {b}")
+                lines.append("")
+    else:  # quick 평면 본문
+        lines.append("## 핵심 포인트")
+        for p in result.key_points:
+            lines.append(f"- {p}")
+
     if result.insights:
         lines += ["", "## 인사이트"]
         for i in result.insights:
@@ -186,11 +206,13 @@ async def upgrade_to_detailed(
         await db.execute(
             """UPDATE items SET
                summary_mode='detailed',
+               sections=?,
                main_arguments=?, insights=?, questions_raised=?,
                related_concepts=?, api_cost_usd=api_cost_usd+?,
                updated_at=CURRENT_TIMESTAMP
                WHERE id=?""",
             (
+                json.dumps(result.sections or [], ensure_ascii=False),
                 json.dumps(result.main_arguments or [], ensure_ascii=False),
                 json.dumps(result.insights or [], ensure_ascii=False),
                 json.dumps(result.questions_raised or [], ensure_ascii=False),
