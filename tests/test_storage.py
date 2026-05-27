@@ -232,7 +232,10 @@ def test_make_md_content_hierarchical():
     r = SummaryResult(
         title="T", language="ko", word_count=0, reading_time_min=0,
         sections=[{"heading": "1. A", "subsections": [
-            {"heading": "1.1 B", "items": [{"lead": "L", "t": 90, "bullets": ["b1", "b2"]}]}]}],
+            {"heading": "1.1 B", "items": [
+                {"lead": "L", "t": 90, "bullets": ["b1", "b2"]},
+                {"lead": "H", "t": 3660, "bullets": ["c1"]},  # 1시간 이상 → h:mm:ss
+            ]}]}],
         summary="한 줄", key_points=[], tags=["x"], suggested_topic="AI",
         summary_mode="detailed", insights=["i"], questions_raised=["q"])
     md = _make_md_content("youtube", "u", r, "claude")
@@ -240,9 +243,12 @@ def test_make_md_content_hierarchical():
     assert "## 1. A" in md
     assert "### 1.1 B" in md
     assert "- **L** (1:30)" in md
+    assert "- **H** (1:01:00)" in md  # h:mm:ss 포맷
     assert "  - b1" in md
     assert "## 인사이트" in md
+    assert "## 탐구할 질문" in md
     assert "핵심 논거" not in md
+    assert "\n\n\n" not in md  # 이중 빈 줄 없음
 
 
 def test_make_md_content_quick_stays_flat():
@@ -254,3 +260,21 @@ def test_make_md_content_quick_stays_flat():
     md = _make_md_content("text", "u", r, "claude")
     assert "## 핵심 포인트" in md
     assert "## 목차" not in md
+
+
+@pytest.mark.asyncio
+async def test_upgrade_to_detailed_persists_sections(db, tmp_path):
+    from services.storage import upgrade_to_detailed
+    nid = await save_note(db_path=db, vault_path=str(tmp_path / "vault"),
+                          source_type="youtube", source_url="u",
+                          result=make_result(), ai_provider="claude")
+    detailed = SummaryResult(
+        title="T", language="ko", word_count=0, reading_time_min=0,
+        sections=[{"heading": "1. A", "subsections": []}],
+        summary="s", key_points=[], tags=[], suggested_topic="",
+        summary_mode="detailed", insights=["i"], questions_raised=["q"], cost_usd=0.01)
+    await upgrade_to_detailed(db, nid, detailed)
+    note = await get_note(db, nid)
+    assert note["summary_mode"] == "detailed"
+    assert note["sections"] == [{"heading": "1. A", "subsections": []}]
+    assert note["insights"] == ["i"]

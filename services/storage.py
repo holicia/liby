@@ -67,12 +67,17 @@ def _make_md_content(
         for p in result.key_points:
             lines.append(f"- {p}")
 
+    def _heading(title: str) -> None:
+        if lines and lines[-1] != "":  # 직전이 빈 줄이 아니면 한 줄만 띄움(이중 빈 줄 방지)
+            lines.append("")
+        lines.append(title)
+
     if result.insights:
-        lines += ["", "## 인사이트"]
+        _heading("## 인사이트")
         for i in result.insights:
             lines.append(f"- {i}")
     if result.questions_raised:
-        lines += ["", "## 탐구할 질문"]
+        _heading("## 탐구할 질문")
         for q in result.questions_raised:
             lines.append(f"- {q}")
     return "\n".join(lines)

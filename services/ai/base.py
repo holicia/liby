@@ -9,7 +9,7 @@ class SummaryResult:
     language: str
     word_count: int
     reading_time_min: int
-    sections: list[str]
+    sections: list[dict]  # detailed: 계층 섹션 [{heading, t?, subsections:[...]}]; quick: []
     summary: str
     key_points: list[str]
     tags: list[str]
