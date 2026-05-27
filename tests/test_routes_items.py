@@ -114,3 +114,38 @@ async def test_backfill_timeline_skips_non_youtube():
     assert resp.status_code == 200
     mock_extract.assert_not_called()  # 비-youtube는 추출 시도 안 함
     mock_set.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_upgrade_youtube_regenerates_sections():
+    captured = {}
+    async def fake_enqueue(task, fn):
+        captured["fn"] = fn
+    note = {**MOCK_NOTE, "type": "youtube", "source_url": "https://youtu.be/abc", "summary": "s"}
+    fake_ai = AsyncMock()
+    fake_ai.name.return_value = "claude"
+    from services.ai.base import SummaryResult
+    full = SummaryResult(
+        title="T", language="ko", word_count=0, reading_time_min=0,
+        sections=[{"heading": "1. A", "subsections": []}],
+        summary="s", key_points=[], tags=[], suggested_topic="", summary_mode="detailed",
+        insights=["i"], questions_raised=["q"], cost_usd=0.0, models_used=["m"])
+    fake_ai.summarize.return_value = full
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note), \
+         patch("routers.items.get_provider", return_value=fake_ai), \
+         patch("routers.items.enqueue", new=fake_enqueue), \
+         patch("routers.items.extract_youtube_full", new_callable=AsyncMock,
+               return_value={"text": "x", "video_id": "v", "native_chapters": None,
+                             "segments": [{"t": 0, "text": "a"}]}), \
+         patch("routers.items.resolve_chapters", new_callable=AsyncMock, return_value=([], 0.0, "")), \
+         patch("routers.items.set_timeline", new_callable=AsyncMock), \
+         patch("routers.items.upgrade_to_detailed", new_callable=AsyncMock) as mock_up, \
+         patch("routers.items.record_api_cost", new_callable=AsyncMock):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/items/1/upgrade")
+        assert resp.status_code == 200
+        task = MagicMock(); task.note_id = None
+        await captured["fn"](task)
+    passed = mock_up.call_args.args[2]  # upgrade_to_detailed(db_path, note_id, result)
+    assert passed.sections[0]["heading"] == "1. A"
+    fake_ai.summarize.assert_awaited_once()

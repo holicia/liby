@@ -9,7 +9,7 @@ from services.storage import (
     record_api_cost, get_topics, get_random_notes,
     list_projects, set_note_project, set_timeline,
 )
-from services.extractor import youtube_video_id, extract_youtube_full
+from services.extractor import youtube_video_id, extract_youtube_full, segments_to_transcript
 from services.chapters import resolve_chapters
 from services.task_queue import new_task, enqueue, queue_meta
 from routers._utils import parse_project_id
@@ -125,22 +125,28 @@ async def upgrade_note(request: Request, note_id: int):
     provider = get_provider(note.get("ai_provider", config.DEFAULT_AI_PROVIDER))
 
     async def do_work(t):
-        t.progress = "상세 분석 중..."
-        detailed = await provider.run_tier3(note["summary"])
-        await upgrade_to_detailed(config.DB_PATH, note_id, detailed)
-        await record_api_cost(config.DB_PATH, provider.name(), "", 0, 0, detailed.cost_usd, note_id)
-        # youtube 노트면 신규 분석처럼 챕터 타임라인도 생성 (실패해도 상세정리는 유지)
-        if note.get("type") == "youtube" and note.get("source_url"):
-            t.progress = "타임라인 생성 중..."
+        is_yt = note.get("type") == "youtube" and note.get("source_url")
+        if is_yt:
+            t.progress = "상세 분석 중..."
             try:
                 data = await extract_youtube_full(note["source_url"])
+                src = segments_to_transcript(data["segments"]) if data["segments"] else data["text"]
+                full = await provider.summarize(src, "youtube", "detailed", [])
+                await upgrade_to_detailed(config.DB_PATH, note_id, full)
+                await record_api_cost(config.DB_PATH, provider.name(), "", 0, 0, full.cost_usd, note_id)
+                t.progress = "타임라인 생성 중..."
                 chapters, cost, model = await resolve_chapters(
                     data["native_chapters"], data["segments"], provider)
                 await set_timeline(config.DB_PATH, note_id, chapters)
                 if cost > 0:
                     await record_api_cost(config.DB_PATH, provider.name(), model, 0, 0, cost, note_id)
             except Exception:
-                pass
+                pass  # 자막 없음/네트워크 오류 → 상세 정리 실패해도 모달은 재렌더
+        else:
+            t.progress = "상세 분석 중..."
+            detailed = await provider.run_tier3(note["summary"])
+            await upgrade_to_detailed(config.DB_PATH, note_id, detailed)
+            await record_api_cost(config.DB_PATH, provider.name(), "", 0, 0, detailed.cost_usd, note_id)
         t.note_id = note_id
 
     await enqueue(task, do_work)
