@@ -108,12 +108,12 @@
       {% for sec in sec_list %}
       {% set sec_idx = loop.index %}
       <details open id="sec-{{ sec_idx }}" class="group">
-        <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer flex items-center gap-2 text-[15px] font-bold text-[#1F2937] dark:text-gray-100 mb-2">
+        <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer flex items-center gap-2 text-[15px] font-bold text-[#1F2937] dark:text-gray-100">
           <span class="text-gray-400 text-[11px] transition-transform group-open:rotate-90">▶</span>
           <span class="flex-1">{{ sec.heading }}</span>
           {% if sec.t is defined and video_id %}<button type="button" onclick="event.preventDefault(); event.stopPropagation(); ytSeek({{ sec.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline">⏱{{ "%d:%02d:%02d"|format(sec.t // 3600, sec.t % 3600 // 60, sec.t % 60) if sec.t >= 3600 else "%d:%02d"|format(sec.t // 60, sec.t % 60) }}</button>{% endif %}
         </summary>
-        <div class="space-y-3 pl-4">
+        <div class="mt-2 space-y-3 pl-4">
           {% for sub in sec.subsections %}
           <div id="sec-{{ sec_idx }}-{{ loop.index }}">
             <h3 class="text-[13px] font-semibold text-[#374151] dark:text-gray-200 mb-1.5">{{ sub.heading }}</h3>
