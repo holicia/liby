@@ -1,7 +1,10 @@
 {% if note %}
 <div class="note-card bg-[#F3F5F4] border border-[#E2E8E4] rounded-xl p-4 flex gap-3 items-start hover:border-[#A8CBB2] hover:shadow-sm transition-all cursor-pointer dark:bg-gray-800 dark:border-gray-700">
   <span class="flex-shrink-0 mt-0.5 bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] text-[10px] font-bold px-2 py-1 rounded border border-[#A8CBB2] dark:border-[#2D6B4A]">{{ note.type | upper }}</span>
-  <div class="flex-1">
+  <div class="flex-1"
+       hx-get="/api/items/{{ note.id }}/detail"
+       hx-target="#note-modal"
+       hx-swap="innerHTML">
     <div class="font-semibold text-[13px] text-[#1F2937] mb-1 dark:text-gray-100">{{ note.title }}</div>
     <div class="text-[10px] text-gray-400 mb-2 flex items-center gap-2">
       {{ note.created_at }}
@@ -39,10 +42,6 @@
       <option value="{{ p.id }}" {% if note.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
       {% endfor %}
     </select>
-    <button class="text-[10px] bg-white border border-[#E2E8E4] rounded px-2.5 py-1 text-gray-500 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] hover:border-[#A8CBB2] transition-colors dark:bg-gray-700"
-            hx-get="/api/items/{{ note.id }}/detail"
-            hx-target="#note-modal"
-            hx-swap="innerHTML">전체 보기</button>
     {% if note.summary_mode == 'quick' %}
     <button class="text-[10px] bg-[#1F6F4A] text-white rounded px-2.5 py-1 font-semibold hover:opacity-90"
             hx-post="/api/items/{{ note.id }}/upgrade"
