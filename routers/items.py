@@ -127,13 +127,14 @@ async def upgrade_note(request: Request, note_id: int):
     async def do_work(t):
         is_yt = note.get("type") == "youtube" and note.get("source_url")
         if is_yt:
+            # 핵심 상세 정리(추출→요약→저장)는 실패 시 예외를 전파해 큐가 오류로 표시한다.
             t.progress = "상세 분석 중..."
-            try:
-                data = await extract_youtube_full(note["source_url"])
-                src = segments_to_transcript(data["segments"]) if data["segments"] else data["text"]
-                full = await provider.summarize(src, "youtube", "detailed", [])
-                await upgrade_to_detailed(config.DB_PATH, note_id, full)
-                await record_api_cost(config.DB_PATH, provider.name(), "", 0, 0, full.cost_usd, note_id)
+            data = await extract_youtube_full(note["source_url"])
+            src = segments_to_transcript(data["segments"]) if data["segments"] else data["text"]
+            full = await provider.summarize(src, "youtube", "detailed", [])
+            await upgrade_to_detailed(config.DB_PATH, note_id, full)
+            await record_api_cost(config.DB_PATH, provider.name(), "", 0, 0, full.cost_usd, note_id)
+            try:  # 타임라인은 부가 기능 → 실패해도 상세 정리는 유지
                 t.progress = "타임라인 생성 중..."
                 chapters, cost, model = await resolve_chapters(
                     data["native_chapters"], data["segments"], provider)
@@ -141,7 +142,7 @@ async def upgrade_note(request: Request, note_id: int):
                 if cost > 0:
                     await record_api_cost(config.DB_PATH, provider.name(), model, 0, 0, cost, note_id)
             except Exception:
-                pass  # 자막 없음/네트워크 오류 → 상세 정리 실패해도 모달은 재렌더
+                pass
         else:
             t.progress = "상세 분석 중..."
             detailed = await provider.run_tier3(note["summary"])

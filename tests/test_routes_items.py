@@ -149,3 +149,33 @@ async def test_upgrade_youtube_regenerates_sections():
     passed = mock_up.call_args.args[2]  # upgrade_to_detailed(db_path, note_id, result)
     assert passed.sections[0]["heading"] == "1. A"
     fake_ai.summarize.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_upgrade_non_youtube_uses_run_tier3():
+    captured = {}
+    async def fake_enqueue(task, fn):
+        captured["fn"] = fn
+    note = {**MOCK_NOTE, "type": "pdf", "source_url": "paper.pdf", "summary": "s"}
+    fake_ai = AsyncMock()
+    fake_ai.name.return_value = "claude"
+    from services.ai.base import SummaryResult
+    detailed = SummaryResult(
+        title="T", language="ko", word_count=0, reading_time_min=0, sections=[],
+        summary="s", key_points=[], tags=[], suggested_topic="", summary_mode="detailed",
+        insights=["i"], questions_raised=["q"], cost_usd=0.0)
+    fake_ai.run_tier3.return_value = detailed
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note), \
+         patch("routers.items.get_provider", return_value=fake_ai), \
+         patch("routers.items.enqueue", new=fake_enqueue), \
+         patch("routers.items.extract_youtube_full", new_callable=AsyncMock) as mock_extract, \
+         patch("routers.items.upgrade_to_detailed", new_callable=AsyncMock), \
+         patch("routers.items.record_api_cost", new_callable=AsyncMock):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/items/1/upgrade")
+        assert resp.status_code == 200
+        task = MagicMock(); task.note_id = None
+        await captured["fn"](task)
+    fake_ai.run_tier3.assert_awaited_once()
+    fake_ai.summarize.assert_not_called()  # 비youtube는 요약 재실행 안 함
+    mock_extract.assert_not_called()
