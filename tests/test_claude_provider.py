@@ -141,3 +141,23 @@ async def test_summarize_detailed_builds_sections(provider):
     assert res.insights == ["i"]
     assert res.questions_raised == ["q"]
     assert res.summary == "한 줄 요약"
+
+
+@pytest.mark.asyncio
+async def test_translate_chapters(provider):
+    import json
+    resp = MagicMock()
+    resp.content = [MagicMock(text=json.dumps(
+        {"chapters": [{"t": 0, "label": "인트로"}, {"t": 90, "label": "본론"}]}, ensure_ascii=False))]
+    resp.usage = MagicMock(input_tokens=10, output_tokens=10)
+    with patch.object(provider._client.messages, "create", new_callable=AsyncMock, return_value=resp):
+        chapters, cost, model = await provider.translate_chapters(
+            [{"t": 0, "label": "Intro"}, {"t": 90, "label": "Body"}])
+    assert chapters == [{"t": 0, "label": "인트로"}, {"t": 90, "label": "본론"}]
+    assert cost > 0
+
+
+@pytest.mark.asyncio
+async def test_translate_chapters_empty_returns_empty(provider):
+    chapters, cost, model = await provider.translate_chapters([])
+    assert chapters == [] and cost == 0.0

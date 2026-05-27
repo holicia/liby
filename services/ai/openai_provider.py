@@ -1,7 +1,7 @@
 import json
 from openai import AsyncOpenAI
 from services.ai.base import AIProvider, SummaryResult
-from services.ai.claude import TIER2_PROMPT, TIER2_CODE_PROMPT, TIER3_PROMPT, CHAPTERS_PROMPT, DETAILED_PROMPT, _build_chapters, _build_sections
+from services.ai.claude import TIER2_PROMPT, TIER2_CODE_PROMPT, TIER3_PROMPT, CHAPTERS_PROMPT, DETAILED_PROMPT, TRANSLATE_CHAPTERS_PROMPT, _build_chapters, _build_sections
 import config
 
 GPT_PRICING: dict[str, dict[str, float]] = {
@@ -106,6 +106,23 @@ class OpenAIProvider(AIProvider):
         except (json.JSONDecodeError, ValueError, TypeError):
             chapters = []
         return chapters, cost, model
+
+    async def translate_chapters(self, chapters: list[dict]) -> tuple[list[dict], float, str]:
+        if not chapters:
+            return [], 0.0, ""
+        model = config.GPT_MODELS["tier2"]
+        prompt = TRANSLATE_CHAPTERS_PROMPT.format(chapters=json.dumps(chapters, ensure_ascii=False))
+        resp = await self._client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+        )
+        cost = _calc_cost(model, resp.usage.prompt_tokens, resp.usage.completion_tokens)
+        try:
+            translated = _build_chapters(json.loads(resp.choices[0].message.content))
+        except (json.JSONDecodeError, ValueError, TypeError):
+            translated = []
+        return (translated or chapters), cost, model
 
     async def run_tier3(self, summary: str) -> SummaryResult:
         empty = SummaryResult(

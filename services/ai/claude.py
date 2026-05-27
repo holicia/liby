@@ -141,6 +141,14 @@ CHAPTERS_PROMPT = """다음은 타임스탬프가 붙은 영상 자막입니다.
 JSON으로만 응답하세요:
 {{"chapters": [{{"t": 0, "label": "인트로"}}, {{"t": 150, "label": "핵심 개념"}}]}}"""
 
+TRANSLATE_CHAPTERS_PROMPT = """다음 영상 챕터 목록의 각 label을 자연스러운 한국어로 번역하세요.
+t(시작 시각, 초)는 그대로 두고 label만 번역합니다.
+
+챕터: {chapters}
+
+JSON으로만 응답하세요:
+{{"chapters": [{{"t": 0, "label": "번역된 제목"}}]}}"""
+
 TIER3_PROMPT = """다음 요약을 바탕으로 심화 분석을 수행하세요.
 
 요약: {summary}
@@ -230,6 +238,22 @@ class ClaudeProvider(AIProvider):
         except (json.JSONDecodeError, ValueError, TypeError):
             chapters = []  # 비정상 응답이어도 챕터는 부가 기능이므로 빈 결과로 폴백
         return chapters, cost, model
+
+    async def translate_chapters(self, chapters: list[dict]) -> tuple[list[dict], float, str]:
+        if not chapters:
+            return [], 0.0, ""
+        model = config.CLAUDE_MODELS["tier2"]
+        prompt = TRANSLATE_CHAPTERS_PROMPT.format(chapters=json.dumps(chapters, ensure_ascii=False))
+        resp = await self._client.messages.create(
+            model=model, max_tokens=2048,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        cost = _calc_cost(model, resp.usage.input_tokens, resp.usage.output_tokens)
+        try:
+            translated = _build_chapters(_parse_json(resp.content[0].text))
+        except (json.JSONDecodeError, ValueError, TypeError):
+            translated = []
+        return (translated or chapters), cost, model  # 번역 실패 시 원본 유지
 
     async def run_tier3(self, summary: str) -> SummaryResult:
         empty = SummaryResult(
