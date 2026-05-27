@@ -90,11 +90,12 @@
       <h3 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">목차</h3>
       <ul class="space-y-0.5 text-[12px]">
         {% for sec in sec_list %}
-        <li><a href="#sec-{{ loop.index }}" class="text-gray-700 dark:text-gray-300 hover:text-[#1F6F4A] dark:hover:text-[#34A66A]">{{ sec.heading }}</a>
+        {% set sec_idx = loop.index %}
+        <li><a href="#sec-{{ sec_idx }}" class="text-gray-700 dark:text-gray-300 hover:text-[#1F6F4A] dark:hover:text-[#34A66A]">{{ sec.heading }}</a>
           {% if sec.subsections %}
           <ul class="ml-3 space-y-0.5">
             {% for sub in sec.subsections %}
-            <li><a href="#sec-{{ loop.parent.loop.index }}-{{ loop.index }}" class="text-gray-500 dark:text-gray-400 hover:text-[#1F6F4A] dark:hover:text-[#34A66A]">{{ sub.heading }}</a></li>
+            <li><a href="#sec-{{ sec_idx }}-{{ loop.index }}" class="text-gray-500 dark:text-gray-400 hover:text-[#1F6F4A] dark:hover:text-[#34A66A]">{{ sub.heading }}</a></li>
             {% endfor %}
           </ul>
           {% endif %}
@@ -105,13 +106,14 @@
     <!-- 계층 본문 -->
     <div class="mb-4 space-y-4">
       {% for sec in sec_list %}
-      <div id="sec-{{ loop.index }}">
+      {% set sec_idx = loop.index %}
+      <div id="sec-{{ sec_idx }}">
         <h2 class="text-[15px] font-bold text-[#1F2937] dark:text-gray-100 mb-2 flex items-center gap-2">
           {{ sec.heading }}
           {% if sec.t is defined and video_id %}<button type="button" onclick="ytSeek({{ sec.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline">⏱{{ "%d:%02d:%02d"|format(sec.t // 3600, sec.t % 3600 // 60, sec.t % 60) if sec.t >= 3600 else "%d:%02d"|format(sec.t // 60, sec.t % 60) }}</button>{% endif %}
         </h2>
         {% for sub in sec.subsections %}
-        <div id="sec-{{ loop.parent.loop.index }}-{{ loop.index }}" class="mb-2">
+        <div id="sec-{{ sec_idx }}-{{ loop.index }}" class="mb-2">
           <h3 class="text-[13px] font-semibold text-[#374151] dark:text-gray-200 mb-1.5">{{ sub.heading }}</h3>
           <ul class="space-y-1.5">
             {% for it in sub["items"] %}
