@@ -179,15 +179,17 @@ class ClaudeProvider(AIProvider):
         model = config.CLAUDE_MODELS["tier2"]
         if mode == "detailed":
             template = DETAILED_PROMPT
+            max_tokens = 8192  # 계층형 sections 출력이 커서 4096이면 JSON이 잘림
         else:
             template = TIER2_CODE_PROMPT if source_type == "code" else TIER2_PROMPT
+            max_tokens = 4096
         prompt = template.format(
             text=text[:12000],
             existing_topics=", ".join(existing_topics) or "없음",
         )
         resp = await self._client.messages.create(
             model=model,
-            max_tokens=4096,
+            max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
         raw = resp.content[0].text
