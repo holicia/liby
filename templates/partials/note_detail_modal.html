@@ -83,8 +83,60 @@
     </div>
     {% endif %}
 
-    <!-- 핵심 포인트 -->
-    {% if note.key_points %}
+    {% set sec_list = note.sections if note.sections is not string else (note.sections | fromjson) %}
+    {% if sec_list %}
+    <!-- 목차 -->
+    <div class="mb-4">
+      <h3 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">목차</h3>
+      <ul class="space-y-0.5 text-[12px]">
+        {% for sec in sec_list %}
+        <li><a href="#sec-{{ loop.index }}" class="text-gray-700 dark:text-gray-300 hover:text-[#1F6F4A] dark:hover:text-[#34A66A]">{{ sec.heading }}</a>
+          {% if sec.subsections %}
+          <ul class="ml-3 space-y-0.5">
+            {% for sub in sec.subsections %}
+            <li><a href="#sec-{{ loop.parent.loop.index }}-{{ loop.index }}" class="text-gray-500 dark:text-gray-400 hover:text-[#1F6F4A] dark:hover:text-[#34A66A]">{{ sub.heading }}</a></li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <!-- 계층 본문 -->
+    <div class="mb-4 space-y-4">
+      {% for sec in sec_list %}
+      <div id="sec-{{ loop.index }}">
+        <h2 class="text-[15px] font-bold text-[#1F2937] dark:text-gray-100 mb-2 flex items-center gap-2">
+          {{ sec.heading }}
+          {% if sec.t is defined and video_id %}<button type="button" onclick="ytSeek({{ sec.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline">⏱{{ "%d:%02d:%02d"|format(sec.t // 3600, sec.t % 3600 // 60, sec.t % 60) if sec.t >= 3600 else "%d:%02d"|format(sec.t // 60, sec.t % 60) }}</button>{% endif %}
+        </h2>
+        {% for sub in sec.subsections %}
+        <div id="sec-{{ loop.parent.loop.index }}-{{ loop.index }}" class="mb-2">
+          <h3 class="text-[13px] font-semibold text-[#374151] dark:text-gray-200 mb-1.5">{{ sub.heading }}</h3>
+          <ul class="space-y-1.5">
+            {% for it in sub["items"] %}
+            <li class="text-[13px] text-gray-700 dark:text-gray-300">
+              <div class="flex items-center gap-2">
+                <span class="font-semibold">{{ it.lead }}</span>
+                {% if it.t is defined and video_id %}<button type="button" onclick="ytSeek({{ it.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline">⏱{{ "%d:%02d:%02d"|format(it.t // 3600, it.t % 3600 // 60, it.t % 60) if it.t >= 3600 else "%d:%02d"|format(it.t // 60, it.t % 60) }}</button>{% endif %}
+              </div>
+              {% if it.bullets %}
+              <ul class="ml-4 mt-1 space-y-1">
+                {% for b in it.bullets %}
+                <li class="flex gap-2"><span class="text-[#1F6F4A] dark:text-[#34A66A] flex-shrink-0">·</span><span class="leading-relaxed">{{ b }}</span></li>
+                {% endfor %}
+              </ul>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <!-- 핵심 포인트 (quick) -->
     {% set kp_list = note.key_points if note.key_points is not string else (note.key_points | fromjson) %}
     {% if kp_list %}
     <div class="mb-4">
@@ -94,24 +146,6 @@
         <li class="flex gap-2 text-[13px] text-gray-700 dark:text-gray-300">
           <span class="text-[#1F6F4A] dark:text-[#34A66A] flex-shrink-0 font-bold">·</span>
           <span class="leading-relaxed">{{ point }}</span>
-        </li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
-    {% endif %}
-
-    <!-- 핵심 논거 (상세 정리만) -->
-    {% if note.main_arguments %}
-    {% set ma_list = note.main_arguments if note.main_arguments is not string else (note.main_arguments | fromjson) %}
-    {% if ma_list %}
-    <div class="mb-4">
-      <h3 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">핵심 논거</h3>
-      <ul class="space-y-1.5">
-        {% for arg in ma_list %}
-        <li class="flex gap-2 text-[13px] text-gray-700 dark:text-gray-300">
-          <span class="text-[#1F6F4A] dark:text-[#34A66A] flex-shrink-0 font-bold">·</span>
-          <span class="leading-relaxed">{{ arg }}</span>
         </li>
         {% endfor %}
       </ul>
