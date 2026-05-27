@@ -124,12 +124,13 @@ JSON으로만 응답하세요:
   "tags": ["태그1", "태그2"],
   "suggested_topic": "기존_주제_중_하나_또는_새_주제명",
   "sections": [
-    {{"heading": "1. 대주제", "t": 0, "subsections": [
-      {{"heading": "1.1 소주제", "t": 0, "items": [
-        {{"lead": "굵은 소제목", "t": 0, "bullets": ["세부 1", "세부 2"]}}
+    {{"heading": "1. 대주제", "t": 10, "subsections": [
+      {{"heading": "1.1 소주제", "items": [
+        {{"lead": "굵은 소제목", "bullets": ["세부 1", "세부 2"]}}
       ]}}
     ]}}
-  ]}}"""
+  ]}}
+(위 예시에서 보듯 t는 타임스탬프가 있을 때만 넣고, 없으면 키 자체를 생략하세요.)"""
 
 CHAPTERS_PROMPT = """다음은 타임스탬프가 붙은 영상 자막입니다. 영상을 5~12개의 의미 단위 챕터로 나누세요.
 각 챕터는 시작 시각(초)과 짧은 제목(라벨)으로 표현합니다. 시간 오름차순, 첫 챕터는 t=0.
@@ -253,10 +254,8 @@ class ClaudeProvider(AIProvider):
         total_cost += _calc_cost(model, resp.usage.input_tokens, resp.usage.output_tokens)
         models_used.append(model)
 
-        result.main_arguments = data.get("main_arguments", [])
         result.insights = data.get("insights", [])
         result.questions_raised = data.get("questions_raised", [])
-        result.related_concepts = data.get("related_concepts", [])
         result.cost_usd = total_cost
         result.models_used = models_used
         return result
