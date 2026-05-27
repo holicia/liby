@@ -26,6 +26,56 @@ def _build_chapters(data: dict) -> list[dict]:
     chapters.sort(key=lambda c: c["t"])
     return chapters
 
+
+def _to_t(val) -> int | None:
+    try:
+        return int(float(val))  # 150, "150", 150.0 허용; "1:30" 등은 None
+    except (TypeError, ValueError):
+        return None
+
+
+def _build_sections(data: dict) -> list[dict]:
+    """LLM 응답 dict → 계층형 sections. 각 단계 가드, 잘못된 항목은 건너뜀."""
+    out = []
+    for sec in data.get("sections", []):
+        if not isinstance(sec, dict):
+            continue
+        heading = str(sec.get("heading", "")).strip()
+        if not heading:
+            continue
+        subs = []
+        for sub in sec.get("subsections", []):
+            if not isinstance(sub, dict):
+                continue
+            sub_heading = str(sub.get("heading", "")).strip()
+            if not sub_heading:
+                continue
+            items = []
+            for it in sub.get("items", []):
+                if not isinstance(it, dict):
+                    continue
+                lead = str(it.get("lead", "")).strip()
+                bullets = [str(b).strip() for b in it.get("bullets", []) if str(b).strip()]
+                if not lead and not bullets:
+                    continue
+                item = {"lead": lead, "bullets": bullets}
+                t = _to_t(it.get("t"))
+                if t is not None:
+                    item["t"] = t
+                items.append(item)
+            sub_obj = {"heading": sub_heading, "items": items}
+            st = _to_t(sub.get("t"))
+            if st is not None:
+                sub_obj["t"] = st
+            subs.append(sub_obj)
+        sec_obj = {"heading": heading, "subsections": subs}
+        sect = _to_t(sec.get("t"))
+        if sect is not None:
+            sec_obj["t"] = sect
+        out.append(sec_obj)
+    return out
+
+
 TIER2_PROMPT = """다음 내용을 분석하여 노트를 작성하세요.
 기존 주제 목록: {existing_topics}
 

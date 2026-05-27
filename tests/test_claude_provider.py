@@ -92,3 +92,28 @@ async def test_generate_chapters_handles_bad_json(provider):
         chapters, cost, model = await provider.generate_chapters("x")
     assert chapters == []
     assert cost > 0  # 호출 비용은 그대로 기록
+
+
+def test_build_sections_hierarchy_and_timestamps():
+    from services.ai.claude import _build_sections
+    data = {"sections": [
+        {"heading": "1. 대주제", "t": "0", "subsections": [
+            {"heading": "1.1 소주제", "t": 90, "items": [
+                {"lead": "리드", "t": "1:30", "bullets": ["a", "b", ""]},
+            ]},
+        ]},
+    ]}
+    assert _build_sections(data) == [
+        {"heading": "1. 대주제", "t": 0, "subsections": [
+            {"heading": "1.1 소주제", "t": 90, "items": [
+                {"lead": "리드", "bullets": ["a", "b"]},  # "1:30"은 숫자 아님 → t 생략, 빈 불릿 제거
+            ]},
+        ]},
+    ]
+
+
+def test_build_sections_skips_invalid():
+    from services.ai.claude import _build_sections
+    data = {"sections": ["notdict", {"heading": "", "subsections": []},
+                         {"heading": "1. ok", "subsections": []}]}
+    assert _build_sections(data) == [{"heading": "1. ok", "subsections": []}]
