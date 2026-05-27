@@ -35,3 +35,25 @@ async def test_summarize_quick_returns_result(provider):
 
 def test_provider_name(provider):
     assert provider.name() == "gpt"
+
+@pytest.mark.asyncio
+async def test_openai_summarize_detailed_builds_sections(provider):
+    import json
+    from unittest.mock import AsyncMock, MagicMock, patch
+    tier2 = MagicMock()
+    tier2.choices = [MagicMock(message=MagicMock(content=json.dumps({
+        "title": "T", "language": "ko", "summary": "한 줄",
+        "tags": ["x"], "suggested_topic": "AI",
+        "sections": [{"heading": "1. A", "subsections": [
+            {"heading": "1.1 B", "items": [{"lead": "L", "bullets": ["b1"]}]}]}],
+    }, ensure_ascii=False)))]
+    tier2.usage = MagicMock(prompt_tokens=10, completion_tokens=10)
+    tier3 = MagicMock()
+    tier3.choices = [MagicMock(message=MagicMock(content=json.dumps(
+        {"insights": ["i"], "questions_raised": ["q"]})))]
+    tier3.usage = MagicMock(prompt_tokens=5, completion_tokens=5)
+    with patch.object(provider._client.chat.completions, "create",
+                      new_callable=AsyncMock, side_effect=[tier2, tier3]):
+        res = await provider.summarize("text", "pdf", "detailed", [])
+    assert res.sections[0]["subsections"][0]["items"][0]["lead"] == "L"
+    assert res.insights == ["i"]

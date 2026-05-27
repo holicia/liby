@@ -1,7 +1,7 @@
 import json
 from openai import AsyncOpenAI
 from services.ai.base import AIProvider, SummaryResult
-from services.ai.claude import TIER2_PROMPT, TIER2_CODE_PROMPT, TIER3_PROMPT, CHAPTERS_PROMPT, _build_chapters
+from services.ai.claude import TIER2_PROMPT, TIER2_CODE_PROMPT, TIER3_PROMPT, CHAPTERS_PROMPT, DETAILED_PROMPT, _build_chapters, _build_sections
 import config
 
 GPT_PRICING: dict[str, dict[str, float]] = {
@@ -32,7 +32,10 @@ class OpenAIProvider(AIProvider):
         models_used: list[str] = []
         model = config.GPT_MODELS["tier2"]
 
-        template = TIER2_CODE_PROMPT if source_type == "code" else TIER2_PROMPT
+        if mode == "detailed":
+            template = DETAILED_PROMPT
+        else:
+            template = TIER2_CODE_PROMPT if source_type == "code" else TIER2_PROMPT
         prompt = template.format(
             text=text[:12000],
             existing_topics=", ".join(existing_topics) or "없음",
@@ -52,7 +55,7 @@ class OpenAIProvider(AIProvider):
             language=data.get("language", "ko"),
             word_count=data.get("word_count", 0),
             reading_time_min=data.get("reading_time_min", 0),
-            sections=data.get("sections", []),
+            sections=_build_sections(data),
             summary=data.get("summary", ""),
             key_points=data.get("key_points", []),
             tags=data.get("tags", []),
