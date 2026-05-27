@@ -33,3 +33,31 @@ async def test_resolve_no_segments_returns_empty():
     assert cost == 0.0
     assert model == ""
     ai.generate_chapters.assert_not_called()
+
+
+def test_labels_are_korean():
+    from services.chapters import _labels_are_korean
+    assert _labels_are_korean([{"t": 0, "label": "인트로"}]) is True
+    assert _labels_are_korean([{"t": 0, "label": "Intro"}]) is False
+    assert _labels_are_korean([{"t": 0, "label": "Intro 도입"}]) is True
+
+
+@pytest.mark.asyncio
+async def test_resolve_keeps_korean_native():
+    ai = AsyncMock()
+    native = [{"t": 0, "label": "인트로"}]
+    chapters, cost, model = await resolve_chapters(native, [], ai)
+    assert chapters == native and cost == 0.0
+    ai.translate_chapters.assert_not_called()
+    ai.generate_chapters.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_resolve_translates_nonkorean_native():
+    ai = AsyncMock()
+    ai.translate_chapters.return_value = ([{"t": 0, "label": "인트로"}], 0.01, "m")
+    native = [{"t": 0, "label": "Intro"}]
+    chapters, cost, model = await resolve_chapters(native, [], ai)
+    assert chapters == [{"t": 0, "label": "인트로"}] and cost == 0.01
+    ai.translate_chapters.assert_awaited_once_with(native)
+    ai.generate_chapters.assert_not_called()
