@@ -41,7 +41,7 @@
         <li>
           <button type="button" onclick="ytSeek({{ ch.t }})"
                   class="w-full text-left flex gap-2 text-[12px] text-gray-700 dark:text-gray-300 hover:bg-[#EAF4EE] dark:hover:bg-[#14291E] rounded px-2 py-1 transition-colors">
-            <span class="text-[#1F6F4A] dark:text-[#34A66A] font-mono flex-shrink-0">{{ "%d:%02d"|format(ch.t // 60, ch.t % 60) }}</span>
+            <span class="text-[#1F6F4A] dark:text-[#34A66A] font-mono flex-shrink-0">{{ "%d:%02d:%02d"|format(ch.t // 3600, ch.t % 3600 // 60, ch.t % 60) if ch.t >= 3600 else "%d:%02d"|format(ch.t // 60, ch.t % 60) }}</span>
             <span class="truncate">{{ ch.label }}</span>
           </button>
         </li>
