@@ -1,3 +1,4 @@
+import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from services.ai.openai_provider import OpenAIProvider
@@ -38,8 +39,6 @@ def test_provider_name(provider):
 
 @pytest.mark.asyncio
 async def test_openai_summarize_detailed_builds_sections(provider):
-    import json
-    from unittest.mock import AsyncMock, MagicMock, patch
     tier2 = MagicMock()
     tier2.choices = [MagicMock(message=MagicMock(content=json.dumps({
         "title": "T", "language": "ko", "summary": "한 줄",
@@ -57,3 +56,5 @@ async def test_openai_summarize_detailed_builds_sections(provider):
         res = await provider.summarize("text", "pdf", "detailed", [])
     assert res.sections[0]["subsections"][0]["items"][0]["lead"] == "L"
     assert res.insights == ["i"]
+    assert res.questions_raised == ["q"]
+    assert res.summary_mode == "detailed"

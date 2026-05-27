@@ -86,10 +86,8 @@ class OpenAIProvider(AIProvider):
         t3_data = json.loads(t3_resp.choices[0].message.content)
         total_cost += _calc_cost(tier3_model, t3_resp.usage.prompt_tokens, t3_resp.usage.completion_tokens)
         models_used.append(tier3_model)
-        result.main_arguments = t3_data.get("main_arguments", [])
         result.insights = t3_data.get("insights", [])
         result.questions_raised = t3_data.get("questions_raised", [])
-        result.related_concepts = t3_data.get("related_concepts", [])
         result.cost_usd = total_cost
         result.models_used = models_used
         return result
