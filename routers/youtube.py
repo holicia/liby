@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, Form, Request
 import aiosqlite
 import config
-from services.extractor import extract_youtube_full
+from services.extractor import extract_youtube_full, segments_to_transcript
 from services.chapters import resolve_chapters
 from services.ai import get_provider
 from services.storage import save_note, record_api_cost
@@ -38,8 +38,12 @@ async def analyze_youtube(
         t.progress = "YouTube 자막 추출 중..."
         data = await extract_youtube_full(url)
         t.progress = "AI 분석 중..."
+        if mode == "detailed" and data["segments"]:
+            summarize_input = segments_to_transcript(data["segments"])
+        else:
+            summarize_input = data["text"]
         async with get_db_topics() as topics:
-            result = await ai.summarize(data["text"], "youtube", mode, topics)
+            result = await ai.summarize(summarize_input, "youtube", mode, topics)
         t.title = result.title
         t.progress = "타임라인 생성 중..."
         chapters, ch_cost, ch_model = await resolve_chapters(
