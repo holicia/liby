@@ -117,3 +117,27 @@ def test_build_sections_skips_invalid():
     data = {"sections": ["notdict", {"heading": "", "subsections": []},
                          {"heading": "1. ok", "subsections": []}]}
     assert _build_sections(data) == [{"heading": "1. ok", "subsections": []}]
+
+
+@pytest.mark.asyncio
+async def test_summarize_detailed_builds_sections(provider):
+    import json
+    tier2 = MagicMock()
+    tier2.content = [MagicMock(text=json.dumps({
+        "title": "T", "language": "ko", "summary": "한 줄 요약",
+        "tags": ["x"], "suggested_topic": "AI",
+        "sections": [{"heading": "1. A", "t": 0, "subsections": [
+            {"heading": "1.1 B", "items": [{"lead": "L", "t": 30, "bullets": ["b1"]}]}]}],
+    }, ensure_ascii=False))]
+    tier2.usage = MagicMock(input_tokens=10, output_tokens=10)
+    tier3 = MagicMock()
+    tier3.content = [MagicMock(text=json.dumps({"insights": ["i"], "questions_raised": ["q"]}))]
+    tier3.usage = MagicMock(input_tokens=5, output_tokens=5)
+    with patch.object(provider._client.messages, "create",
+                      new_callable=AsyncMock, side_effect=[tier2, tier3]):
+        res = await provider.summarize("[0:00] hi", "youtube", "detailed", [])
+    assert res.sections[0]["heading"] == "1. A"
+    assert res.sections[0]["subsections"][0]["items"][0]["t"] == 30
+    assert res.insights == ["i"]
+    assert res.questions_raised == ["q"]
+    assert res.summary == "한 줄 요약"

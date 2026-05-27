@@ -107,6 +107,30 @@ JSON으로 응답하세요:
   "tags": ["언어", "프레임워크", "도메인키워드"],
   "suggested_topic": "기존_주제_중_하나_또는_새_주제명"}}"""
 
+DETAILED_PROMPT = """다음 내용을 분석하여 상세 노트를 계층 구조로 작성하세요.
+기존 주제 목록: {existing_topics}
+
+내용:
+{text}
+
+규칙:
+- 본문을 5~12개의 의미 단위 대섹션(heading: "1. ...", "2. ...")으로 나눕니다.
+- 각 대섹션은 1개 이상의 소섹션(heading: "1.1 ...")을 가지며, 각 소섹션은 굵게 강조할 핵심 항목(lead)과 그 아래 2~5개의 세부 불릿(bullets)을 가집니다.
+- 입력 줄에 [m:ss] 형태의 타임스탬프가 있으면, 해당 섹션/소섹션/항목이 시작되는 지점의 t를 "초 단위 정수"로 채웁니다. 타임스탬프가 없으면 t는 생략합니다.
+
+JSON으로만 응답하세요:
+{{"title": "제목", "language": "ko|en",
+  "summary": "전체를 아우르는 2~3문장 한 줄 요약",
+  "tags": ["태그1", "태그2"],
+  "suggested_topic": "기존_주제_중_하나_또는_새_주제명",
+  "sections": [
+    {{"heading": "1. 대주제", "t": 0, "subsections": [
+      {{"heading": "1.1 소주제", "t": 0, "items": [
+        {{"lead": "굵은 소제목", "t": 0, "bullets": ["세부 1", "세부 2"]}}
+      ]}}
+    ]}}
+  ]}}"""
+
 CHAPTERS_PROMPT = """다음은 타임스탬프가 붙은 영상 자막입니다. 영상을 5~12개의 의미 단위 챕터로 나누세요.
 각 챕터는 시작 시각(초)과 짧은 제목(라벨)으로 표현합니다. 시간 오름차순, 첫 챕터는 t=0.
 
@@ -116,15 +140,13 @@ CHAPTERS_PROMPT = """다음은 타임스탬프가 붙은 영상 자막입니다.
 JSON으로만 응답하세요:
 {{"chapters": [{{"t": 0, "label": "인트로"}}, {{"t": 150, "label": "핵심 개념"}}]}}"""
 
-TIER3_PROMPT = """다음 요약을 바탕으로 심층 분석을 수행하세요.
+TIER3_PROMPT = """다음 요약을 바탕으로 심화 분석을 수행하세요.
 
 요약: {summary}
 
 JSON으로 응답하세요:
-{{"main_arguments": ["논거1", "논거2"],
-  "insights": ["인사이트1", "인사이트2"],
-  "questions_raised": ["질문1", "질문2"],
-  "related_concepts": ["개념1", "개념2"]}}"""
+{{"insights": ["인사이트1", "인사이트2"],
+  "questions_raised": ["질문1", "질문2"]}}"""
 
 CLAUDE_PRICING: dict[str, dict[str, float]] = {
     "claude-haiku-4-5":   {"input": 0.25,  "output": 1.25},
@@ -154,7 +176,10 @@ class ClaudeProvider(AIProvider):
         models_used: list[str] = []
 
         model = config.CLAUDE_MODELS["tier2"]
-        template = TIER2_CODE_PROMPT if source_type == "code" else TIER2_PROMPT
+        if mode == "detailed":
+            template = DETAILED_PROMPT
+        else:
+            template = TIER2_CODE_PROMPT if source_type == "code" else TIER2_PROMPT
         prompt = template.format(
             text=text[:12000],
             existing_topics=", ".join(existing_topics) or "없음",
@@ -174,7 +199,7 @@ class ClaudeProvider(AIProvider):
             language=data.get("language", "ko"),
             word_count=data.get("word_count", 0),
             reading_time_min=data.get("reading_time_min", 0),
-            sections=data.get("sections", []),
+            sections=_build_sections(data),
             summary=data.get("summary", ""),
             key_points=data.get("key_points", []),
             tags=data.get("tags", []),
