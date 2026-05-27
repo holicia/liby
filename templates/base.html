@@ -57,7 +57,7 @@
 <div class="flex flex-1 min-h-0">
 
   <!-- SIDEBAR -->
-  <aside class="w-52 border-r border-[#E2E8E4] bg-white flex flex-col dark:bg-gray-900 dark:border-gray-700">
+  <aside id="sidebar" style="width:208px" class="border-r border-[#E2E8E4] bg-white flex flex-col dark:bg-gray-900 dark:border-gray-700 flex-shrink-0">
     <div class="flex-1 overflow-y-auto p-3 space-y-0.5">
       <div class="flex gap-1 p-1 mb-2 bg-[#F3F5F4] dark:bg-gray-800 rounded-lg text-[11px]">
         <button id="mode-topic-btn" onclick="setSidebarMode('topic')"
@@ -102,6 +102,9 @@
     </div>
   </aside>
 
+  <!-- SIDEBAR RESIZER -->
+  <div id="sidebar-resizer" class="w-1 cursor-col-resize bg-transparent hover:bg-[#1F6F4A]/40 flex-shrink-0"></div>
+
   <!-- MAIN -->
   <main class="flex-1 overflow-y-auto px-6 py-5 bg-white dark:bg-gray-950">
     {% block content %}{% endblock %}
@@ -109,6 +112,25 @@
 </div>
 
 <script>
+(function initSidebarResize() {
+  const sb = document.getElementById('sidebar');
+  const rz = document.getElementById('sidebar-resizer');
+  if (!sb || !rz) return;
+  const clamp = w => Math.min(480, Math.max(160, w));
+  const saved = parseInt(localStorage.getItem('sidebarWidth'), 10);
+  if (saved) sb.style.width = clamp(saved) + 'px';
+  let dragging = false;
+  rz.addEventListener('mousedown', e => { dragging = true; document.body.style.userSelect = 'none'; e.preventDefault(); });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    sb.style.width = clamp(e.clientX - sb.getBoundingClientRect().left) + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false; document.body.style.userSelect = '';
+    localStorage.setItem('sidebarWidth', parseInt(sb.style.width, 10));
+  });
+})();
 function toggleTheme() {
   const html = document.documentElement;
   const btn = document.getElementById("theme-btn");
