@@ -14,13 +14,16 @@ router = APIRouter(prefix="/api/youtube", tags=["youtube"])
 
 @asynccontextmanager
 async def get_db_topics():
+    # try는 DB 조회만 감싸고, yield는 정확히 한 번만(본문 예외가 athrow로 던져져도
+    # except가 다시 yield하지 않도록) — 그래야 본문의 진짜 예외가 그대로 전파됨.
     try:
         async with aiosqlite.connect(config.DB_PATH) as db:
             cursor = await db.execute("SELECT DISTINCT topic FROM items WHERE topic IS NOT NULL")
             rows = await cursor.fetchall()
-        yield [r[0] for r in rows]
+        topics = [r[0] for r in rows]
     except Exception:
-        yield []
+        topics = []
+    yield topics
 
 @router.post("")
 async def analyze_youtube(
