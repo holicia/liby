@@ -49,6 +49,9 @@ class OpenAIProvider(AIProvider):
         total_cost += _calc_cost(model, resp.usage.prompt_tokens, resp.usage.completion_tokens)
         models_used.append(model)
 
+        if raw is None:
+            # 안전 필터/길이 초과 등으로 content가 비는 경우 finish_reason을 메시지에 노출
+            raise ValueError(f"GPT가 빈 응답을 반환했습니다(model={model}, finish_reason={resp.choices[0].finish_reason})")
         data = json.loads(raw)
         result = SummaryResult(
             title=data.get("title", "제목 없음"),
@@ -83,7 +86,10 @@ class OpenAIProvider(AIProvider):
             messages=[{"role": "user", "content": t3_prompt}],
             response_format={"type": "json_object"},
         )
-        t3_data = json.loads(t3_resp.choices[0].message.content)
+        t3_raw = t3_resp.choices[0].message.content
+        if t3_raw is None:
+            raise ValueError(f"GPT tier3가 빈 응답을 반환했습니다(model={tier3_model}, finish_reason={t3_resp.choices[0].finish_reason})")
+        t3_data = json.loads(t3_raw)
         total_cost += _calc_cost(tier3_model, t3_resp.usage.prompt_tokens, t3_resp.usage.completion_tokens)
         models_used.append(tier3_model)
         result.insights = t3_data.get("insights", [])

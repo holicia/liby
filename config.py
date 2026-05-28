@@ -19,5 +19,5 @@ CLAUDE_MODELS: dict[str, str] = {
 GPT_MODELS: dict[str, str] = {
     "tier1": "gpt-4o-mini",
     "tier2": "gpt-4o",
-    "tier3": "o1-mini",
+    "tier3": "gpt-4o-mini",  # o1-mini 폐기 → 저비용 호환 모델로 대체
 }
