@@ -36,23 +36,6 @@
   </div>
 </nav>
 
-<!-- INPUT PANEL -->
-<div id="input-panel" class="w-[60%] mx-auto bg-[#EAF4EE] border-x border-t border-[#E2E8E4] px-5 py-3 rounded-t-xl dark:bg-[#14291E] dark:border-gray-700">
-  {% include "partials/input_youtube.html" %}
-</div>
-
-<div class="w-[60%] mx-auto bg-[#EAF4EE] dark:bg-[#14291E] border-x border-b border-[#E2E8E4] dark:border-gray-700 px-5 py-1.5 rounded-b-xl flex items-center gap-2">
-  <span class="text-[11px] text-gray-500 dark:text-gray-400">현재 프로젝트</span>
-  <select id="current-project" name="project_id"
-          class="text-xs bg-white border border-[#E2E8E4] dark:border-gray-700 rounded-lg px-2 py-1 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
-          hx-get="/api/projects/options" hx-trigger="load, projectsChanged from:body" hx-swap="innerHTML">
-    <option value="">(프로젝트 없음)</option>
-  </select>
-</div>
-
-<!-- QUEUE PANEL -->
-<div id="queue-panel" class="empty:hidden px-5 py-3 space-y-2 border-b border-[#E2E8E4] bg-white dark:bg-gray-950 dark:border-gray-700"></div>
-
 <!-- LAYOUT -->
 <div class="flex flex-1 min-h-0">
 
@@ -106,8 +89,24 @@
   <div id="sidebar-resizer" class="w-1 cursor-col-resize bg-transparent hover:bg-[#1F6F4A]/40 flex-shrink-0"></div>
 
   <!-- MAIN -->
-  <main class="flex-1 overflow-y-auto px-6 py-5 bg-white dark:bg-gray-950">
-    {% block content %}{% endblock %}
+  <main class="flex-1 overflow-y-auto bg-white dark:bg-gray-950">
+    <!-- INPUT PANEL -->
+    <div id="input-panel" class="bg-[#EAF4EE] border-b border-[#E2E8E4] px-5 py-3 dark:bg-[#14291E] dark:border-gray-700">
+      {% include "partials/input_youtube.html" %}
+    </div>
+    <div class="bg-[#EAF4EE] dark:bg-[#14291E] border-b border-[#E2E8E4] dark:border-gray-700 px-5 py-1.5 flex items-center gap-2">
+      <span class="text-[11px] text-gray-500 dark:text-gray-400">현재 프로젝트</span>
+      <select id="current-project" name="project_id"
+              class="text-xs bg-white border border-[#E2E8E4] dark:border-gray-700 rounded-lg px-2 py-1 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+              hx-get="/api/projects/options" hx-trigger="load, projectsChanged from:body" hx-swap="innerHTML">
+        <option value="">(프로젝트 없음)</option>
+      </select>
+    </div>
+    <!-- QUEUE PANEL -->
+    <div id="queue-panel" class="empty:hidden px-5 py-3 space-y-2 border-b border-[#E2E8E4] bg-white dark:bg-gray-950 dark:border-gray-700"></div>
+    <div class="px-6 py-5">
+      {% block content %}{% endblock %}
+    </div>
   </main>
 </div>
 
