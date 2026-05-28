@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, Form, Request
 import aiosqlite
 import config
-from services.extractor import extract_youtube_full, segments_to_transcript
+from services.extractor import extract_youtube_full, segments_to_transcript, youtube_title
 from services.chapters import resolve_chapters
 from services.ai import get_provider
 from services.storage import save_note, record_api_cost
@@ -31,7 +31,9 @@ async def analyze_youtube(
     project_id: str = Form(""),
 ):
     pid = parse_project_id(project_id)
-    task = new_task("youtube", url)
+    # oEmbed로 영상 제목을 미리 가져와 큐 카드에 표시(실패 시 URL 폴백)
+    title = await youtube_title(url) or url
+    task = new_task("youtube", title)
     ai = get_provider(provider)
 
     async def do_work(t):

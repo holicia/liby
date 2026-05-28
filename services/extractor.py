@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import re
+import urllib.parse
 import urllib.request
 import fitz
 import yt_dlp
@@ -172,6 +173,24 @@ def _fetch_full_sync(video_id: str) -> dict:
 async def extract_youtube_full(url: str) -> dict:
     video_id = _extract_video_id(url)
     return await asyncio.get_running_loop().run_in_executor(None, _fetch_full_sync, video_id)
+
+
+def _fetch_youtube_title_sync(url: str) -> str | None:
+    """YouTube oEmbed로 영상 제목만 빠르게 가져온다. 실패 시 None."""
+    try:
+        qs = urllib.parse.urlencode({"url": url, "format": "json"})
+        req = urllib.request.Request(
+            f"https://www.youtube.com/oembed?{qs}",
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return json.loads(resp.read()).get("title")
+    except Exception:
+        return None
+
+
+async def youtube_title(url: str) -> str | None:
+    return await asyncio.get_running_loop().run_in_executor(None, _fetch_youtube_title_sync, url)
 
 
 def _github_api(path: str) -> dict:

@@ -91,3 +91,34 @@ async def test_youtube_detailed_passes_timestamped_transcript():
         await captured["fn"](task)
     arg0 = fake_ai.summarize.call_args.args[0]
     assert "[0:00]" in arg0 and "안녕" in arg0  # 평문 PLAIN이 아니라 타임스탬프 자막 전달
+
+
+@pytest.mark.asyncio
+async def test_youtube_uses_video_title_for_queue_card():
+    captured = {}
+    async def fake_enqueue(task, fn):
+        captured["task"] = task
+    with patch("routers.youtube.enqueue", new=fake_enqueue), \
+         patch("routers.youtube.get_provider"), \
+         patch("routers.youtube.youtube_title", new_callable=AsyncMock, return_value="My Video Title"):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/youtube",
+                data={"url": "https://youtu.be/abc", "provider": "claude", "mode": "quick"})
+    assert resp.status_code == 200
+    assert captured["task"].title == "My Video Title"
+
+
+@pytest.mark.asyncio
+async def test_youtube_falls_back_to_url_when_title_unavailable():
+    captured = {}
+    async def fake_enqueue(task, fn):
+        captured["task"] = task
+    url = "https://youtu.be/xyz"
+    with patch("routers.youtube.enqueue", new=fake_enqueue), \
+         patch("routers.youtube.get_provider"), \
+         patch("routers.youtube.youtube_title", new_callable=AsyncMock, return_value=None):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/youtube",
+                data={"url": url, "provider": "claude", "mode": "quick"})
+    assert resp.status_code == 200
+    assert captured["task"].title == url
