@@ -2,7 +2,6 @@ import asyncio
 import base64
 import json
 import re
-import urllib.parse
 import urllib.request
 import fitz
 import yt_dlp
@@ -176,15 +175,12 @@ async def extract_youtube_full(url: str) -> dict:
 
 
 def _fetch_youtube_title_sync(url: str) -> str | None:
-    """YouTube oEmbed로 영상 제목만 빠르게 가져온다. 실패 시 None."""
+    """yt-dlp 메타데이터로 영상 제목만 가져온다(자막/포맷 처리 생략으로 빠름). 실패 시 None."""
     try:
-        qs = urllib.parse.urlencode({"url": url, "format": "json"})
-        req = urllib.request.Request(
-            f"https://www.youtube.com/oembed?{qs}",
-            headers={"User-Agent": "Mozilla/5.0"},
-        )
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            return json.loads(resp.read()).get("title")
+        opts = {"skip_download": True, "quiet": True, "no_warnings": True, "extract_flat": True}
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=False, process=False)
+        return info.get("title")
     except Exception:
         return None
 
