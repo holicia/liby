@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="liby", lifespan=lifespan)
 
-from routers import youtube, pdf, items, settings, code, tasks, text, projects
+from routers import youtube, pdf, items, settings, code, tasks, text, projects, markdown
 app.include_router(youtube.router)
 app.include_router(pdf.router)
 app.include_router(items.router)
@@ -23,6 +23,7 @@ app.include_router(code.router)
 app.include_router(tasks.router)
 app.include_router(text.router)
 app.include_router(projects.router)
+app.include_router(markdown.router)
 
 @app.get("/partials/input/{tab}")
 async def get_input_partial(request: Request, tab: str) -> HTMLResponse:
