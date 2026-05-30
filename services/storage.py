@@ -228,7 +228,7 @@ async def upgrade_to_detailed(
             """UPDATE items SET
                summary_mode='detailed',
                sections=?,
-               paragraphs=?,
+               paragraphs=COALESCE(NULLIF(?, '[]'), paragraphs),
                main_arguments=?, insights=?, questions_raised=?,
                related_concepts=?, api_cost_usd=api_cost_usd+?,
                updated_at=CURRENT_TIMESTAMP

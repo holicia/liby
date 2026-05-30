@@ -334,3 +334,19 @@ async def test_upgrade_to_detailed_persists_paragraphs(db, tmp_path):
     await upgrade_to_detailed(db, nid, detailed)
     note = await get_note(db, nid)
     assert note["paragraphs"] == [{"text": "문단", "quote": "인용"}]
+
+
+@pytest.mark.asyncio
+async def test_upgrade_to_detailed_preserves_existing_paragraphs(db, tmp_path):
+    from services.storage import upgrade_to_detailed
+    quick = make_result()
+    quick.paragraphs = [{"text": "기존 문단", "quote": "기존 인용", "t": 5}]
+    nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="text",
+                          source_url="u", result=quick, ai_provider="claude")
+    detailed = SummaryResult(
+        title="T", language="ko", word_count=0, reading_time_min=0,
+        sections=[], summary="s", key_points=[], tags=[], suggested_topic="",
+        summary_mode="detailed", insights=["i"], questions_raised=["q"], cost_usd=0.0)
+    await upgrade_to_detailed(db, nid, detailed)
+    note = await get_note(db, nid)
+    assert note["paragraphs"] == [{"text": "기존 문단", "quote": "기존 인용", "t": 5}]
