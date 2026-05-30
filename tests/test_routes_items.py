@@ -278,3 +278,14 @@ async def test_card_renders_delete_button():
     assert 'hx-delete="/api/items/1"' in resp.text
     assert 'id="note-card-1"' in resp.text
     assert 'hx-target="#note-card-1"' in resp.text
+
+
+@pytest.mark.asyncio
+async def test_modal_renders_delete_button():
+    """모달 우상단에 hx-delete 휴지통이 렌더돼야 한다."""
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert 'hx-delete="/api/items/1"' in resp.text
+    assert 'closeNoteModal()' in resp.text
