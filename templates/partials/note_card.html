@@ -27,7 +27,7 @@
       {% if note.topic %}
       <span class="text-[10px] bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] border border-[#A8CBB2] dark:border-[#2D6B4A] px-2 py-0.5 rounded font-semibold">{{ note.topic }}</span>
       {% endif %}
-      <span class="ml-auto text-[10px] text-gray-400">${{ "%.3f"|format(note.cost_usd or 0) }}</span>
+      <span class="ml-auto text-[10px] text-gray-400">${{ "%.3f"|format(note.api_cost_usd or 0) }}</span>
     </div>
   </div>
   <div class="flex flex-col gap-1 flex-shrink-0">

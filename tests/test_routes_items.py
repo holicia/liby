@@ -8,9 +8,21 @@ MOCK_NOTE = {
     "id": 1, "type": "youtube", "title": "테스트", "summary": "요약",
     "tags": '["AI"]', "topic": "AI/ML", "summary_mode": "quick",
     "key_points": '["핵심1"]', "ai_provider": "claude",
-    "cost_usd": 0.003, "created_at": "2026-05-23",
+    "api_cost_usd": 0.003, "created_at": "2026-05-23",
     "source_url": "https://youtube.com/watch?v=abc",
 }
+
+
+@pytest.mark.asyncio
+async def test_card_displays_api_cost_usd_value():
+    """노트 카드 비용 표시가 api_cost_usd 값을 반영(0.000이 아닌 실제 값)."""
+    with patch("routers.items.list_notes", return_value=[MOCK_NOTE]), \
+         patch("routers.items.list_projects", return_value=[]):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items")
+    assert resp.status_code == 200
+    assert "$0.003" in resp.text
+    assert "$0.000" not in resp.text
 
 @pytest.mark.asyncio
 async def test_get_items_returns_list():
