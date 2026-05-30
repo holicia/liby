@@ -277,3 +277,4 @@ async def test_card_renders_delete_button():
     assert resp.status_code == 200
     assert 'hx-delete="/api/items/1"' in resp.text
     assert 'id="note-card-1"' in resp.text
+    assert 'hx-target="#note-card-1"' in resp.text

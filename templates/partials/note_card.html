@@ -51,7 +51,7 @@
     <button class="text-[10px] bg-white border border-[#E2E8E4] rounded px-2.5 py-1 text-gray-500 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] transition-colors dark:bg-gray-700"
             hx-post="/api/items/{{ note.id }}/open-md"
             hx-swap="none">.md 열기</button>
-    <button class="text-[10px] bg-white border border-[#E2E8E4] rounded px-2.5 py-1 text-gray-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors dark:bg-gray-700"
+    <button title="삭제" class="text-[10px] bg-white border border-[#E2E8E4] rounded px-2.5 py-1 text-gray-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors dark:bg-gray-700"
             hx-delete="/api/items/{{ note.id }}"
             hx-confirm="이 노트를 삭제하시겠어요? .md 파일도 함께 사라집니다."
             hx-target="#note-card-{{ note.id }}"
