@@ -2,6 +2,7 @@ import subprocess
 import shutil
 import json
 from services.ai.base import AIProvider, SummaryResult
+from services.ai.claude import _build_paragraphs
 
 FALLBACK_PROMPT = """다음 내용을 분석하여 JSON으로 응답하세요.
 
@@ -11,8 +12,11 @@ FALLBACK_PROMPT = """다음 내용을 분석하여 JSON으로 응답하세요.
 JSON 형식:
 {{"title": "제목", "language": "ko", "word_count": 숫자,
   "reading_time_min": 숫자, "sections": [],
-  "summary": "5~10문장 요약",
-  "key_points": ["핵심1", "핵심2"],
+  "summary": "전체를 아우르는 2~3문장 한 줄 요약",
+  "paragraphs": [
+    {{"text": "한국어 문단", "quote": "원문에서 발췌한 한 문장"}},
+    {{"text": "다른 문단"}}
+  ],
   "tags": ["태그1"],
   "suggested_topic": "주제명"}}"""
 
@@ -64,6 +68,7 @@ class FallbackProvider(AIProvider):
             sections=data.get("sections", []),
             summary=data.get("summary", ""),
             key_points=data.get("key_points", []),
+            paragraphs=_build_paragraphs(data),
             tags=data.get("tags", []),
             suggested_topic=data.get("suggested_topic", ""),
             summary_mode=mode,
