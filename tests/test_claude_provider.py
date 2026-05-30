@@ -161,3 +161,26 @@ async def test_translate_chapters(provider):
 async def test_translate_chapters_empty_returns_empty(provider):
     chapters, cost, model = await provider.translate_chapters([])
     assert chapters == [] and cost == 0.0
+
+
+def test_build_paragraphs_keeps_text_quote_and_t():
+    from services.ai.claude import _build_paragraphs
+    data = {"paragraphs": [
+        {"text": "  문단 1  ", "quote": "  인용  ", "t": "30"},
+        {"text": "문단 2"},
+    ]}
+    assert _build_paragraphs(data) == [
+        {"text": "문단 1", "quote": "인용", "t": 30},
+        {"text": "문단 2"},
+    ]
+
+
+def test_build_paragraphs_skips_invalid():
+    from services.ai.claude import _build_paragraphs
+    data = {"paragraphs": [
+        "notdict",
+        {"text": ""},
+        {"quote": "only"},
+        {"text": "ok", "t": "1:30"},
+    ]}
+    assert _build_paragraphs(data) == [{"text": "ok"}]

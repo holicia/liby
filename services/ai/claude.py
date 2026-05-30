@@ -76,6 +76,26 @@ def _build_sections(data: dict) -> list[dict]:
     return out
 
 
+def _build_paragraphs(data: dict) -> list[dict]:
+    """LLM 응답 dict → [{text, quote?, t?}]. text 비면 skip; t는 _to_t 가드."""
+    out = []
+    for p in data.get("paragraphs", []):
+        if not isinstance(p, dict):
+            continue
+        text = str(p.get("text", "")).strip()
+        if not text:
+            continue
+        block = {"text": text}
+        quote = str(p.get("quote", "")).strip()
+        if quote:
+            block["quote"] = quote
+        t = _to_t(p.get("t"))
+        if t is not None:
+            block["t"] = t
+        out.append(block)
+    return out
+
+
 TIER2_PROMPT = """다음 내용을 분석하여 노트를 작성하세요.
 기존 주제 목록: {existing_topics}
 
