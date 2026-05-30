@@ -57,8 +57,9 @@ def _make_md_content(
             for sub in sec.get("subsections", []):
                 lines += [f"### {sub['heading']}", ""]
                 for it in sub.get("items", []):
-                    if it.get("text"):  # 신규: 문단 + 인용
-                        lines.append(it["text"])
+                    if "text" in it:  # 신규: 문단 + 인용 (text 키가 있으면 신규 스키마)
+                        if it["text"]:
+                            lines.append(it["text"])
                         if it.get("quote"):
                             ts = f"[{_ts(it['t'])}] " if "t" in it else ""
                             lines.append(f'> {ts}"{it["quote"]}"')

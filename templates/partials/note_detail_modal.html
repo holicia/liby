@@ -119,10 +119,10 @@
             <h3 class="text-[13px] font-semibold text-[#374151] dark:text-gray-200 mb-1.5">{{ sub.heading }}</h3>
             <div class="space-y-3">
               {% for it in sub["items"] %}
-              {% if it.text %}
-              {# 신규: 문단 + 인용 #}
+              {% if it.text is defined %}
+              {# 신규: 문단 + 인용 (text 키가 있으면 신규 스키마) #}
               <div>
-                <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">{{ it.text }}</p>
+                {% if it.text %}<p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">{{ it.text }}</p>{% endif %}
                 {% if it.quote %}
                 <blockquote class="border-l-4 border-[#1F6F4A]/40 pl-3 mt-1.5 text-[12px] italic text-gray-600 dark:text-gray-400">
                   {% if it.t is defined and video_id %}<button type="button" onclick="event.preventDefault(); event.stopPropagation(); ytSeek({{ it.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline mr-1.5">⏱{{ "%d:%02d:%02d"|format(it.t // 3600, it.t % 3600 // 60, it.t % 60) if it.t >= 3600 else "%d:%02d"|format(it.t // 60, it.t % 60) }}</button>{% endif %}
