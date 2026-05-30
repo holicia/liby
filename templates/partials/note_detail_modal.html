@@ -1,3 +1,6 @@
+{% macro fmt_ts(t) -%}
+{{- "%d:%02d:%02d"|format(t // 3600, t % 3600 // 60, t % 60) if t >= 3600 else "%d:%02d"|format(t // 60, t % 60) -}}
+{%- endmacro %}
 {% if note %}
 <div class="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto"
      id="note-modal-overlay"
@@ -41,7 +44,7 @@
         <li>
           <button type="button" onclick="ytSeek({{ ch.t }})"
                   class="w-full text-left flex gap-2 text-[12px] text-gray-700 dark:text-gray-300 hover:bg-[#EAF4EE] dark:hover:bg-[#14291E] rounded px-2 py-1 transition-colors">
-            <span class="text-[#1F6F4A] dark:text-[#34A66A] font-mono flex-shrink-0">{{ "%d:%02d:%02d"|format(ch.t // 3600, ch.t % 3600 // 60, ch.t % 60) if ch.t >= 3600 else "%d:%02d"|format(ch.t // 60, ch.t % 60) }}</span>
+            <span class="text-[#1F6F4A] dark:text-[#34A66A] font-mono flex-shrink-0">{{ fmt_ts(ch.t) }}</span>
             <span class="truncate">{{ ch.label }}</span>
           </button>
         </li>
@@ -111,7 +114,7 @@
         <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer flex items-center gap-2 text-[15px] font-bold text-[#1F2937] dark:text-gray-100">
           <span class="text-gray-400 text-[11px] transition-transform group-open:rotate-90">▶</span>
           <span class="flex-1">{{ sec.heading }}</span>
-          {% if sec.t is defined and video_id %}<button type="button" onclick="event.preventDefault(); event.stopPropagation(); ytSeek({{ sec.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline">⏱{{ "%d:%02d:%02d"|format(sec.t // 3600, sec.t % 3600 // 60, sec.t % 60) if sec.t >= 3600 else "%d:%02d"|format(sec.t // 60, sec.t % 60) }}</button>{% endif %}
+          {% if sec.t is defined and video_id %}<button type="button" onclick="event.preventDefault(); event.stopPropagation(); ytSeek({{ sec.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline">⏱{{ fmt_ts(sec.t) }}</button>{% endif %}
         </summary>
         <div class="mt-2 space-y-3 pl-4">
           {% for sub in sec.subsections %}
@@ -125,7 +128,7 @@
                 {% if it.text %}<p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">{{ it.text }}</p>{% endif %}
                 {% if it.quote %}
                 <blockquote class="border-l-4 border-[#1F6F4A]/40 pl-3 mt-1.5 text-[12px] italic text-gray-600 dark:text-gray-400">
-                  {% if it.t is defined and video_id %}<button type="button" onclick="event.preventDefault(); event.stopPropagation(); ytSeek({{ it.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline mr-1.5">⏱{{ "%d:%02d:%02d"|format(it.t // 3600, it.t % 3600 // 60, it.t % 60) if it.t >= 3600 else "%d:%02d"|format(it.t // 60, it.t % 60) }}</button>{% endif %}
+                  {% if it.t is defined and video_id %}<button type="button" onclick="event.preventDefault(); event.stopPropagation(); ytSeek({{ it.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline mr-1.5">⏱{{ fmt_ts(it.t) }}</button>{% endif %}
                   &ldquo;{{ it.quote }}&rdquo;
                 </blockquote>
                 {% endif %}
@@ -135,7 +138,7 @@
               <div class="text-[13px] text-gray-700 dark:text-gray-300">
                 <div class="flex items-center gap-2">
                   <span class="font-semibold">{{ it.lead }}</span>
-                  {% if it.t is defined and video_id %}<button type="button" onclick="ytSeek({{ it.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline">⏱{{ "%d:%02d:%02d"|format(it.t // 3600, it.t % 3600 // 60, it.t % 60) if it.t >= 3600 else "%d:%02d"|format(it.t // 60, it.t % 60) }}</button>{% endif %}
+                  {% if it.t is defined and video_id %}<button type="button" onclick="ytSeek({{ it.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline">⏱{{ fmt_ts(it.t) }}</button>{% endif %}
                 </div>
                 {% if it.bullets %}
                 <ul class="ml-4 mt-1 space-y-1">
@@ -166,7 +169,7 @@
           <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">{{ p.text }}</p>
           {% if p.quote %}
           <blockquote class="border-l-4 border-[#1F6F4A]/40 pl-3 mt-1.5 text-[12px] italic text-gray-600 dark:text-gray-400">
-            {% if p.t is defined and video_id %}<button type="button" onclick="ytSeek({{ p.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline mr-1.5">⏱{{ "%d:%02d:%02d"|format(p.t // 3600, p.t % 3600 // 60, p.t % 60) if p.t >= 3600 else "%d:%02d"|format(p.t // 60, p.t % 60) }}</button>{% endif %}
+            {% if p.t is defined and video_id %}<button type="button" onclick="ytSeek({{ p.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline mr-1.5">⏱{{ fmt_ts(p.t) }}</button>{% endif %}
             &ldquo;{{ p.quote }}&rdquo;
           </blockquote>
           {% endif %}
