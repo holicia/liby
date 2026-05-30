@@ -291,3 +291,37 @@ async def test_modal_renders_delete_button():
     assert 'closeNoteModal()' in resp.text
     assert 'hx-confirm=' in resp.text
     assert 'hx-swap="outerHTML"' in resp.text
+
+
+@pytest.mark.asyncio
+async def test_modal_renders_screenshot_toggle_when_timeline_has_images():
+    """timeline에 image 키가 있으면 모달이 토글 + img 마크업을 렌더."""
+    note = dict(MOCK_NOTE)
+    note["source_url"] = "https://youtube.com/watch?v=dQw4w9WgXcY"  # 11-char video ID
+    note["timeline"] = [
+        {"t": 0, "label": "A", "image": "slug/ch-1.jpg"},
+        {"t": 90, "label": "B", "image": "slug/ch-2.jpg"},
+    ]
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert "📷 스크린샷 보기" in resp.text
+    assert 'src="/vault/youtube/slug/ch-1.jpg"' in resp.text
+    assert 'src="/vault/youtube/slug/ch-2.jpg"' in resp.text
+
+
+@pytest.mark.asyncio
+async def test_modal_hides_screenshot_toggle_when_no_images():
+    """timeline에 image 키가 없으면 토글 마크업이 안 보여야 한다."""
+    note = dict(MOCK_NOTE)
+    note["source_url"] = "https://youtube.com/watch?v=dQw4w9WgXcY"  # 11-char video ID
+    note["timeline"] = [
+        {"t": 0, "label": "A"},
+        {"t": 90, "label": "B"},
+    ]
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert "📷 스크린샷 보기" not in resp.text
