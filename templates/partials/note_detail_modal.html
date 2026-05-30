@@ -7,12 +7,12 @@
      onclick="if(event.target===this){closeNoteModal()}">
   <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl my-8 p-6 relative shadow-2xl">
     <!-- 삭제 -->
-    <button title="삭제"
+    <button title="삭제" aria-label="삭제"
             hx-delete="/api/items/{{ note.id }}"
             hx-confirm="이 노트를 삭제하시겠어요? .md 파일도 함께 사라집니다."
             hx-target="#note-card-{{ note.id }}"
             hx-swap="outerHTML"
-            hx-on::after-request="closeNoteModal()"
+            hx-on::after-request="if(event.detail.successful) closeNoteModal()"
             class="absolute top-4 right-14 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/40 transition-colors text-sm">🗑</button>
     <!-- 닫기 -->
     <button onclick="closeNoteModal()"

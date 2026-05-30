@@ -289,3 +289,5 @@ async def test_modal_renders_delete_button():
     assert resp.status_code == 200
     assert 'hx-delete="/api/items/1"' in resp.text
     assert 'closeNoteModal()' in resp.text
+    assert 'hx-confirm=' in resp.text
+    assert 'hx-swap="outerHTML"' in resp.text
