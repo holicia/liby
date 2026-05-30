@@ -43,7 +43,7 @@ async def analyze_youtube(
         t.progress = "YouTube 자막 추출 중..."
         data = await extract_youtube_full(url)
         t.progress = "AI 분석 중..."
-        if mode == "detailed" and data["segments"]:
+        if data["segments"]:
             summarize_input = segments_to_transcript(data["segments"])
         else:
             summarize_input = data["text"]

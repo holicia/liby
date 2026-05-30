@@ -122,3 +122,35 @@ async def test_youtube_falls_back_to_url_when_title_unavailable():
                 data={"url": url, "provider": "claude", "mode": "quick"})
     assert resp.status_code == 200
     assert captured["task"].title == url
+
+
+@pytest.mark.asyncio
+async def test_youtube_quick_passes_timestamped_transcript_and_paragraphs():
+    captured = {}
+    async def fake_enqueue(task, fn): captured["fn"] = fn
+    fake_ai = AsyncMock(); fake_ai.name.return_value = "claude"
+    from services.ai.base import SummaryResult
+    fake_ai.summarize.return_value = SummaryResult(
+        title="T", language="ko", word_count=0, reading_time_min=0, sections=[],
+        summary="s", key_points=[], tags=[], suggested_topic="", summary_mode="quick",
+        paragraphs=[{"text": "문단", "quote": "원문", "t": 5}],
+        cost_usd=0.0, models_used=["m"])
+    with patch("routers.youtube.enqueue", new=fake_enqueue), \
+         patch("routers.youtube.get_provider", return_value=fake_ai), \
+         patch("routers.youtube.youtube_title", new_callable=AsyncMock, return_value="제목"), \
+         patch("routers.youtube.extract_youtube_full", new_callable=AsyncMock,
+               return_value={"text": "PLAIN", "video_id": "v", "native_chapters": None,
+                             "segments": [{"t": 0, "text": "안녕"}]}), \
+         patch("routers.youtube.save_note", new_callable=AsyncMock, return_value=1) as mock_save, \
+         patch("routers.youtube.record_api_cost", new_callable=AsyncMock), \
+         patch("routers.youtube.resolve_chapters", new_callable=AsyncMock, return_value=([], 0.0, "")):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            await c.post("/api/youtube", data={"url": "https://youtu.be/abc",
+                                               "provider": "claude", "mode": "quick"})
+        task = MagicMock(); task.note_id = None
+        await captured["fn"](task)
+    # 타임스탬프 자막을 summarize 입력으로 사용
+    assert "[0:00]" in fake_ai.summarize.call_args.args[0]
+    # save_note는 result.paragraphs를 직접 사용 (kwarg 없음)
+    saved_result = mock_save.call_args.kwargs["result"]
+    assert saved_result.paragraphs == [{"text": "문단", "quote": "원문", "t": 5}]
