@@ -83,3 +83,15 @@ async def test_init_db_adds_timeline_column(tmp_path):
         cursor = await db.execute("PRAGMA table_info(items)")
         cols = [r[1] for r in await cursor.fetchall()]
     assert "timeline" in cols
+
+
+@pytest.mark.asyncio
+async def test_init_db_adds_paragraphs_column_idempotently(tmp_path):
+    import aiosqlite
+    db_path = str(tmp_path / "t.db")
+    await init_db(db_path)
+    await init_db(db_path)  # 두 번째 호출에서도 에러 없이 통과해야 함
+    async with aiosqlite.connect(db_path) as db:
+        cur = await db.execute("PRAGMA table_info(items)")
+        cols = [r[1] for r in await cur.fetchall()]
+    assert "paragraphs" in cols

@@ -88,6 +88,7 @@ async def save_note(
     result: SummaryResult, ai_provider: str,
     project_id: int | None = None,
     timeline: list | None = None,
+    paragraphs: list | None = None,
 ) -> int:
     today = datetime.now().strftime("%Y-%m-%d")
     filename = f"{today}-{_safe_filename(result.title)}.md"
@@ -106,8 +107,8 @@ async def save_note(
                (type, title, source_url, summary, key_points, sections, tags, topic,
                 summary_mode, main_arguments, insights, questions_raised,
                 related_concepts, ai_provider, ai_models, api_cost_usd, md_file_path, project_id,
-                timeline)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                timeline, paragraphs)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 source_type, result.title, source_url, result.summary,
                 json.dumps(result.key_points, ensure_ascii=False),
@@ -122,6 +123,7 @@ async def save_note(
                 json.dumps(result.models_used, ensure_ascii=False),
                 result.cost_usd, md_path, project_id,
                 json.dumps(timeline or [], ensure_ascii=False),
+                json.dumps(paragraphs or [], ensure_ascii=False),
             )
         )
         await db.commit()
@@ -159,7 +161,7 @@ async def get_monthly_cost(db_path: str, provider: str) -> float:
         return row[0] if row else 0.0
 
 _JSON_FIELDS = ("tags", "key_points", "sections", "main_arguments",
-                "insights", "questions_raised", "related_concepts", "ai_models", "timeline")
+                "insights", "questions_raised", "related_concepts", "ai_models", "timeline", "paragraphs")
 
 def _parse_row(row: dict) -> dict:
     for field in _JSON_FIELDS:
@@ -212,12 +214,14 @@ async def upgrade_to_detailed(
             """UPDATE items SET
                summary_mode='detailed',
                sections=?,
+               paragraphs=?,
                main_arguments=?, insights=?, questions_raised=?,
                related_concepts=?, api_cost_usd=api_cost_usd+?,
                updated_at=CURRENT_TIMESTAMP
                WHERE id=?""",
             (
                 json.dumps(result.sections or [], ensure_ascii=False),
+                json.dumps(result.paragraphs or [], ensure_ascii=False),
                 json.dumps(result.main_arguments or [], ensure_ascii=False),
                 json.dumps(result.insights or [], ensure_ascii=False),
                 json.dumps(result.questions_raised or [], ensure_ascii=False),

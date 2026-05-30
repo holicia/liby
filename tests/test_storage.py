@@ -278,3 +278,39 @@ async def test_upgrade_to_detailed_persists_sections(db, tmp_path):
     assert note["summary_mode"] == "detailed"
     assert note["sections"] == [{"heading": "1. A", "subsections": []}]
     assert note["insights"] == ["i"]
+
+
+@pytest.mark.asyncio
+async def test_save_note_with_paragraphs(db, tmp_path):
+    paragraphs = [
+        {"text": "AI 해석 문단", "quote": "원문 한 문장", "t": 30},
+        {"text": "두 번째 문단"},
+    ]
+    nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="youtube",
+                          source_url="u", result=make_result(), ai_provider="claude",
+                          paragraphs=paragraphs)
+    note = await get_note(db, nid)
+    assert note["paragraphs"] == paragraphs
+
+
+@pytest.mark.asyncio
+async def test_save_note_paragraphs_defaults_empty(db, tmp_path):
+    nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="text",
+                          source_url="u", result=make_result(), ai_provider="claude")
+    note = await get_note(db, nid)
+    assert note["paragraphs"] == []
+
+
+@pytest.mark.asyncio
+async def test_upgrade_to_detailed_persists_paragraphs(db, tmp_path):
+    from services.storage import upgrade_to_detailed
+    nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="youtube",
+                          source_url="u", result=make_result(), ai_provider="claude")
+    detailed = SummaryResult(
+        title="T", language="ko", word_count=0, reading_time_min=0,
+        sections=[], summary="s", key_points=[], tags=[], suggested_topic="",
+        summary_mode="detailed", insights=["i"], questions_raised=["q"],
+        paragraphs=[{"text": "문단", "quote": "인용"}], cost_usd=0.0)
+    await upgrade_to_detailed(db, nid, detailed)
+    note = await get_note(db, nid)
+    assert note["paragraphs"] == [{"text": "문단", "quote": "인용"}]
