@@ -21,7 +21,7 @@
 <nav class="sticky top-0 z-10 bg-white border-b border-[#E2E8E4] flex items-stretch h-12 px-5 shadow-sm dark:bg-gray-900 dark:border-gray-700">
   <span class="font-extrabold text-[17px] text-[#1F6F4A] flex items-center pr-5 border-r border-[#E2E8E4] mr-2">📚 liby</span>
   <div class="flex items-stretch">
-    {% for tab in [("YouTube","youtube"),("PDF","pdf"),("Code","code"),("Text","text")] %}
+    {% for tab in [("YouTube","youtube"),("PDF","pdf"),("Code","code"),("Text","text"),("Markdown","markdown")] %}
     <button
       class="px-4 text-xs font-medium text-gray-400 border-b-2 border-transparent hover:text-gray-700 transition-colors"
       hx-get="/partials/input/{{ tab[1] }}"
