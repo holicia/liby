@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Form, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from typing import Optional
 import os
+from pathlib import Path
 import config
 from services.ai import get_provider
 from services.storage import (
@@ -63,8 +64,6 @@ async def get_item_detail(request: Request, note_id: int):
 
 @router.delete("/{note_id}")
 async def delete_item(note_id: int):
-    from fastapi.responses import HTMLResponse
-    from pathlib import Path
     md_path = await delete_note(config.DB_PATH, note_id)
     if md_path:
         try:
