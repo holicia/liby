@@ -57,7 +57,9 @@ async def test_youtube_do_work_generates_timeline():
                return_value={"text": "x", "video_id": "v", "native_chapters": [{"t": 0, "label": "C"}], "segments": []}), \
          patch("routers.youtube.save_note", new_callable=AsyncMock, return_value=1) as mock_save, \
          patch("routers.youtube.record_api_cost", new_callable=AsyncMock), \
-         patch("routers.youtube.resolve_chapters", new_callable=AsyncMock, return_value=([{"t": 0, "label": "C"}], 0.0, "")):
+         patch("routers.youtube.resolve_chapters", new_callable=AsyncMock, return_value=([{"t": 0, "label": "C"}], 0.0, "")), \
+         patch("routers.youtube.capture_chapter_screenshots", new_callable=AsyncMock,
+               return_value=[{"t": 0, "label": "C"}]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             await c.post("/api/youtube", data={"url": "https://youtu.be/abc", "provider": "claude", "mode": "quick"})
         task = MagicMock(); task.note_id = None

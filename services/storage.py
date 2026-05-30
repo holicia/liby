@@ -5,7 +5,7 @@ from datetime import datetime
 import aiosqlite
 from services.ai.base import SummaryResult
 
-def _safe_filename(title: str) -> str:
+def safe_filename(title: str) -> str:
     """제목을 파일명으로 안전하게 변환 (Windows 금지 문자 < > : " / \\ | ? * 및 공백 제거)."""
     safe = re.sub(r'[<>:"/\\|?*\s]+', "-", title[:40]).strip("-. ")
     return safe or "untitled"
@@ -106,7 +106,7 @@ async def save_note(
     timeline: list | None = None,
 ) -> int:
     today = datetime.now().strftime("%Y-%m-%d")
-    filename = f"{today}-{_safe_filename(result.title)}.md"
+    filename = f"{today}-{safe_filename(result.title)}.md"
     subdir = os.path.join(vault_path, source_type)
     os.makedirs(subdir, exist_ok=True)
     md_path = os.path.join(subdir, filename)
