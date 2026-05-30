@@ -57,12 +57,27 @@ def _make_md_content(
             for sub in sec.get("subsections", []):
                 lines += [f"### {sub['heading']}", ""]
                 for it in sub.get("items", []):
-                    ts = f" ({_ts(it['t'])})" if "t" in it else ""
-                    lines.append(f"- **{it['lead']}**{ts}")
-                    for b in it.get("bullets", []):
-                        lines.append(f"  - {b}")
-                lines.append("")
-    else:  # quick 평면 본문
+                    if it.get("text"):  # 신규: 문단 + 인용
+                        lines.append(it["text"])
+                        if it.get("quote"):
+                            ts = f"[{_ts(it['t'])}] " if "t" in it else ""
+                            lines.append(f'> {ts}"{it["quote"]}"')
+                    else:  # 백워드 호환: 옛 {lead, bullets}
+                        ts = f" ({_ts(it['t'])})" if "t" in it else ""
+                        lines.append(f"- **{it.get('lead','')}**{ts}")
+                        for b in it.get("bullets", []):
+                            lines.append(f"  - {b}")
+                    lines.append("")
+    elif result.paragraphs:  # quick 신규: 문단 본문
+        lines.append("## 본문")
+        lines.append("")
+        for p in result.paragraphs:
+            lines.append(p["text"])
+            if p.get("quote"):
+                ts = f"[{_ts(p['t'])}] " if "t" in p else ""
+                lines.append(f'> {ts}"{p["quote"]}"')
+            lines.append("")
+    else:  # 백워드 호환: 옛 quick key_points
         lines.append("## 핵심 포인트")
         for p in result.key_points:
             lines.append(f"- {p}")
