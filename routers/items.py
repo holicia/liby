@@ -8,6 +8,7 @@ from services.storage import (
     get_note, list_notes, upgrade_to_detailed,
     record_api_cost, get_topics, get_random_notes,
     list_projects, set_note_project, set_timeline,
+    delete_note,
 )
 from services.extractor import youtube_video_id, extract_youtube_full, segments_to_transcript
 from services.chapters import resolve_chapters
@@ -59,6 +60,18 @@ async def get_item_detail(request: Request, note_id: int):
         request, "partials/note_detail_modal.html",
         {"note": note, "video_id": video_id},
     )
+
+@router.delete("/{note_id}")
+async def delete_item(note_id: int):
+    from fastapi.responses import HTMLResponse
+    from pathlib import Path
+    md_path = await delete_note(config.DB_PATH, note_id)
+    if md_path:
+        try:
+            Path(md_path).unlink()
+        except FileNotFoundError:
+            pass
+    return HTMLResponse(content="", status_code=200)
 
 @router.post("/{note_id}/timeline")
 async def backfill_timeline(request: Request, note_id: int):

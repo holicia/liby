@@ -230,3 +230,38 @@ async def test_upgrade_non_youtube_uses_run_tier3():
     fake_ai.run_tier3.assert_awaited_once()
     fake_ai.summarize.assert_not_called()  # 비youtube는 요약 재실행 안 함
     mock_extract.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_item_removes_db_row_and_file(tmp_path):
+    md = tmp_path / "test.md"
+    md.write_text("body", encoding="utf-8")
+    async def fake_delete_note(db, nid):
+        assert nid == 1
+        return str(md)
+    with patch("routers.items.delete_note", new=fake_delete_note):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.delete("/api/items/1")
+    assert resp.status_code == 200
+    assert resp.text == ""
+    assert not md.exists()
+
+
+@pytest.mark.asyncio
+async def test_delete_item_is_idempotent_when_row_missing(tmp_path):
+    async def fake_delete_note(db, nid): return None
+    with patch("routers.items.delete_note", new=fake_delete_note):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.delete("/api/items/999")
+    assert resp.status_code == 200
+    assert resp.text == ""
+
+
+@pytest.mark.asyncio
+async def test_delete_item_swallows_missing_file(tmp_path):
+    missing = tmp_path / "gone.md"
+    async def fake_delete_note(db, nid): return str(missing)
+    with patch("routers.items.delete_note", new=fake_delete_note):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.delete("/api/items/1")
+    assert resp.status_code == 200
