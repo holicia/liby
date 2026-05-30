@@ -88,7 +88,6 @@ async def save_note(
     result: SummaryResult, ai_provider: str,
     project_id: int | None = None,
     timeline: list | None = None,
-    paragraphs: list | None = None,
 ) -> int:
     today = datetime.now().strftime("%Y-%m-%d")
     filename = f"{today}-{_safe_filename(result.title)}.md"
@@ -123,7 +122,7 @@ async def save_note(
                 json.dumps(result.models_used, ensure_ascii=False),
                 result.cost_usd, md_path, project_id,
                 json.dumps(timeline or [], ensure_ascii=False),
-                json.dumps(paragraphs or [], ensure_ascii=False),
+                json.dumps(result.paragraphs or [], ensure_ascii=False),
             )
         )
         await db.commit()

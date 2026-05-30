@@ -286,17 +286,19 @@ async def test_save_note_with_paragraphs(db, tmp_path):
         {"text": "AI 해석 문단", "quote": "원문 한 문장", "t": 30},
         {"text": "두 번째 문단"},
     ]
+    result = make_result()
+    result.paragraphs = paragraphs
     nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="youtube",
-                          source_url="u", result=make_result(), ai_provider="claude",
-                          paragraphs=paragraphs)
+                          source_url="u", result=result, ai_provider="claude")
     note = await get_note(db, nid)
     assert note["paragraphs"] == paragraphs
 
 
 @pytest.mark.asyncio
 async def test_save_note_paragraphs_defaults_empty(db, tmp_path):
+    result = make_result()
     nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="text",
-                          source_url="u", result=make_result(), ai_provider="claude")
+                          source_url="u", result=result, ai_provider="claude")
     note = await get_note(db, nid)
     assert note["paragraphs"] == []
 
