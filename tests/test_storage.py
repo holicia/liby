@@ -355,6 +355,24 @@ async def test_upgrade_to_detailed_persists_paragraphs(db, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_delete_note_removes_row_and_returns_md_path(db, tmp_path):
+    from services.storage import delete_note, get_note
+    nid = await save_note(db_path=db, vault_path=str(tmp_path/"vault"), source_type="youtube",
+                          source_url="u", result=make_result(), ai_provider="claude")
+    saved = await get_note(db, nid)
+    saved_path = saved["md_file_path"]
+    returned = await delete_note(db, nid)
+    assert returned == saved_path
+    assert await get_note(db, nid) is None
+
+
+@pytest.mark.asyncio
+async def test_delete_note_unknown_id_returns_none(db):
+    from services.storage import delete_note
+    assert await delete_note(db, 999999) is None
+
+
+@pytest.mark.asyncio
 async def test_upgrade_to_detailed_preserves_existing_paragraphs(db, tmp_path):
     from services.storage import upgrade_to_detailed
     quick = make_result()
