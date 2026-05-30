@@ -1,3 +1,4 @@
+import os
 import pytest
 import json
 import aiosqlite
@@ -363,6 +364,7 @@ async def test_delete_note_removes_row_and_returns_md_path(db, tmp_path):
     saved_path = saved["md_file_path"]
     returned = await delete_note(db, nid)
     assert returned == saved_path
+    assert os.path.exists(returned)  # storage does not unlink; that is the caller's responsibility
     assert await get_note(db, nid) is None
 
 

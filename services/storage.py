@@ -146,11 +146,11 @@ async def delete_note(db_path: str, note_id: int) -> str | None:
     """노트 row를 삭제하고 저장돼 있던 md_file_path를 반환(없으면 None).
     호출자가 반환값을 받아 파일을 unlink한다(파일/DB 트랜잭션 분리)."""
     async with aiosqlite.connect(db_path) as db:
-        cursor = await db.execute("SELECT md_file_path FROM items WHERE id=?", (note_id,))
+        cursor = await db.execute("SELECT md_file_path FROM items WHERE id = ?", (note_id,))
         row = await cursor.fetchone()
         if row is None:
             return None
-        await db.execute("DELETE FROM items WHERE id=?", (note_id,))
+        await db.execute("DELETE FROM items WHERE id = ?", (note_id,))
         await db.commit()
         return row[0]
 
