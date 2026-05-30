@@ -34,3 +34,23 @@ async def test_index_theme_toggle_uses_icon():
     assert '🌙' in resp.text
     assert '다크 모드' not in resp.text
     assert '라이트 모드' not in resp.text
+
+
+@pytest.mark.asyncio
+async def test_vault_static_mount_serves_existing_file(tmp_path):
+    """/vault/<path>가 config.VAULT_PATH 하위의 실제 파일을 서빙해야 한다."""
+    import config
+    import pathlib
+    target_dir = pathlib.Path(config.VAULT_PATH) / "youtube" / "_test_static_mount"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / "ch-1.txt"
+    target.write_text("hello", encoding="utf-8")
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/vault/youtube/_test_static_mount/ch-1.txt")
+        assert resp.status_code == 200
+        assert resp.text == "hello"
+    finally:
+        target.unlink(missing_ok=True)
+        try: target_dir.rmdir()
+        except OSError: pass

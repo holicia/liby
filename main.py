@@ -1,10 +1,13 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from models import init_db
 from templates_env import templates
 from services.task_queue import run_worker
+import config
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,6 +27,9 @@ app.include_router(tasks.router)
 app.include_router(text.router)
 app.include_router(projects.router)
 app.include_router(markdown.router)
+
+os.makedirs(config.VAULT_PATH, exist_ok=True)
+app.mount("/vault", StaticFiles(directory=config.VAULT_PATH), name="vault")
 
 @app.get("/partials/input/{tab}")
 async def get_input_partial(request: Request, tab: str) -> HTMLResponse:
