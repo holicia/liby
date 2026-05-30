@@ -86,6 +86,45 @@ async def test_detail_passes_video_id_for_youtube():
 
 
 @pytest.mark.asyncio
+async def test_detail_renders_legacy_lead_bullets_items():
+    """옛 {lead, bullets} 형태 detailed 노트가 모달에서 폴백 분기로 정상 렌더되는지."""
+    legacy = dict(MOCK_NOTE)
+    legacy.update({
+        "summary_mode": "detailed",
+        "sections": [{"heading": "1. 대주제", "subsections": [
+            {"heading": "1.1 소주제", "items": [
+                {"lead": "옛 핵심 한 줄", "bullets": ["옛 불릿 A", "옛 불릿 B"]},
+            ]},
+        ]}],
+        "paragraphs": [],  # 옛 노트는 paragraphs 없음
+    })
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=legacy):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert "옛 핵심 한 줄" in resp.text
+    assert "옛 불릿 A" in resp.text
+    assert "옛 불릿 B" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_detail_renders_legacy_quick_key_points_fallback():
+    """옛 quick 노트(paragraphs 없고 key_points만 있음)가 핵심 포인트 폴백으로 렌더되는지."""
+    legacy = dict(MOCK_NOTE)
+    legacy.update({
+        "summary_mode": "quick", "sections": [],
+        "key_points": ["옛 핵심 1", "옛 핵심 2"], "paragraphs": [],
+    })
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=legacy):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert "핵심 포인트" in resp.text
+    assert "옛 핵심 1" in resp.text
+    assert "옛 핵심 2" in resp.text
+
+
+@pytest.mark.asyncio
 async def test_backfill_timeline_calls_set_timeline():
     note = dict(MOCK_NOTE)
     fake_ai = MagicMock()
