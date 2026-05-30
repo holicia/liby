@@ -117,9 +117,22 @@
           {% for sub in sec.subsections %}
           <div id="sec-{{ sec_idx }}-{{ loop.index }}">
             <h3 class="text-[13px] font-semibold text-[#374151] dark:text-gray-200 mb-1.5">{{ sub.heading }}</h3>
-            <ul class="space-y-1.5">
+            <div class="space-y-3">
               {% for it in sub["items"] %}
-              <li class="text-[13px] text-gray-700 dark:text-gray-300">
+              {% if it.text %}
+              {# 신규: 문단 + 인용 #}
+              <div>
+                <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">{{ it.text }}</p>
+                {% if it.quote %}
+                <blockquote class="border-l-4 border-[#1F6F4A]/40 pl-3 mt-1.5 text-[12px] italic text-gray-600 dark:text-gray-400">
+                  {% if it.t is defined and video_id %}<button type="button" onclick="event.preventDefault(); event.stopPropagation(); ytSeek({{ it.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline mr-1.5">⏱{{ "%d:%02d:%02d"|format(it.t // 3600, it.t % 3600 // 60, it.t % 60) if it.t >= 3600 else "%d:%02d"|format(it.t // 60, it.t % 60) }}</button>{% endif %}
+                  &ldquo;{{ it.quote }}&rdquo;
+                </blockquote>
+                {% endif %}
+              </div>
+              {% else %}
+              {# 백워드 호환: 옛 {lead, bullets} #}
+              <div class="text-[13px] text-gray-700 dark:text-gray-300">
                 <div class="flex items-center gap-2">
                   <span class="font-semibold">{{ it.lead }}</span>
                   {% if it.t is defined and video_id %}<button type="button" onclick="ytSeek({{ it.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline">⏱{{ "%d:%02d:%02d"|format(it.t // 3600, it.t % 3600 // 60, it.t % 60) if it.t >= 3600 else "%d:%02d"|format(it.t // 60, it.t % 60) }}</button>{% endif %}
@@ -131,9 +144,10 @@
                   {% endfor %}
                 </ul>
                 {% endif %}
-              </li>
+              </div>
+              {% endif %}
               {% endfor %}
-            </ul>
+            </div>
           </div>
           {% endfor %}
         </div>
@@ -141,7 +155,27 @@
       {% endfor %}
     </div>
     {% else %}
-    <!-- 핵심 포인트 (quick) -->
+    {% set p_list = note.paragraphs if note.paragraphs is not string else (note.paragraphs | fromjson) %}
+    {% if p_list %}
+    <!-- 본문 (quick paragraphs) -->
+    <div class="mb-4">
+      <h3 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">본문</h3>
+      <div class="space-y-3">
+        {% for p in p_list %}
+        <div>
+          <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">{{ p.text }}</p>
+          {% if p.quote %}
+          <blockquote class="border-l-4 border-[#1F6F4A]/40 pl-3 mt-1.5 text-[12px] italic text-gray-600 dark:text-gray-400">
+            {% if p.t is defined and video_id %}<button type="button" onclick="ytSeek({{ p.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline mr-1.5">⏱{{ "%d:%02d:%02d"|format(p.t // 3600, p.t % 3600 // 60, p.t % 60) if p.t >= 3600 else "%d:%02d"|format(p.t // 60, p.t % 60) }}</button>{% endif %}
+            &ldquo;{{ p.quote }}&rdquo;
+          </blockquote>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <!-- 핵심 포인트 (옛 quick) -->
     {% set kp_list = note.key_points if note.key_points is not string else (note.key_points | fromjson) %}
     {% if kp_list %}
     <div class="mb-4">
@@ -155,6 +189,7 @@
         {% endfor %}
       </ul>
     </div>
+    {% endif %}
     {% endif %}
     {% endif %}
 
