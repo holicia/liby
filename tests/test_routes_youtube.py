@@ -154,3 +154,42 @@ async def test_youtube_quick_passes_timestamped_transcript_and_paragraphs():
     # save_note는 result.paragraphs를 직접 사용 (kwarg 없음)
     saved_result = mock_save.call_args.kwargs["result"]
     assert saved_result.paragraphs == [{"text": "문단", "quote": "원문", "t": 5}]
+
+
+@pytest.mark.asyncio
+async def test_youtube_pipes_chapters_with_images_to_save_note():
+    """capture_chapter_screenshots이 추가한 image 키가 save_note의 timeline kwarg에 그대로 전달."""
+    captured = {}
+    async def fake_enqueue(task, fn): captured["fn"] = fn
+    fake_ai = AsyncMock(); fake_ai.name.return_value = "claude"
+    from services.ai.base import SummaryResult
+    fake_ai.summarize.return_value = SummaryResult(
+        title="제목", language="ko", word_count=0, reading_time_min=0, sections=[],
+        summary="s", key_points=[], tags=[], suggested_topic="", summary_mode="quick",
+        paragraphs=[], cost_usd=0.0, models_used=["m"])
+
+    captured_chapters = [{"t": 0, "label": "A"}, {"t": 90, "label": "B"}]
+    async def fake_capture(url, chapters, vault_path, note_slug):
+        return [{**ch, "image": f"제목/ch-{i+1}.jpg"} for i, ch in enumerate(chapters)]
+
+    with patch("routers.youtube.enqueue", new=fake_enqueue), \
+         patch("routers.youtube.get_provider", return_value=fake_ai), \
+         patch("routers.youtube.youtube_title", new_callable=AsyncMock, return_value="제목"), \
+         patch("routers.youtube.extract_youtube_full", new_callable=AsyncMock,
+               return_value={"text": "x", "video_id": "v", "native_chapters": None,
+                             "segments": [{"t": 0, "text": "안녕"}]}), \
+         patch("routers.youtube.save_note", new_callable=AsyncMock, return_value=1) as mock_save, \
+         patch("routers.youtube.record_api_cost", new_callable=AsyncMock), \
+         patch("routers.youtube.resolve_chapters", new_callable=AsyncMock,
+               return_value=(captured_chapters, 0.0, "")), \
+         patch("routers.youtube.capture_chapter_screenshots", new=fake_capture):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            await c.post("/api/youtube", data={"url": "https://youtu.be/abc",
+                                               "provider": "claude", "mode": "quick"})
+        task = MagicMock(); task.note_id = None
+        await captured["fn"](task)
+    timeline_arg = mock_save.call_args.kwargs["timeline"]
+    assert timeline_arg == [
+        {"t": 0, "label": "A", "image": "제목/ch-1.jpg"},
+        {"t": 90, "label": "B", "image": "제목/ch-2.jpg"},
+    ]

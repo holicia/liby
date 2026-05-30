@@ -5,8 +5,9 @@ import config
 from services.extractor import extract_youtube_full, segments_to_transcript, youtube_title
 from services.chapters import resolve_chapters
 from services.ai import get_provider
-from services.storage import save_note, record_api_cost
+from services.storage import save_note, record_api_cost, _safe_filename
 from services.task_queue import new_task, enqueue, queue_meta
+from services.capture import capture_chapter_screenshots
 from routers._utils import parse_project_id
 from templates_env import templates
 
@@ -53,6 +54,10 @@ async def analyze_youtube(
         t.progress = "타임라인 생성 중..."
         chapters, ch_cost, ch_model = await resolve_chapters(
             data["native_chapters"], data["segments"], ai)
+        if chapters:
+            t.progress = "스크린샷 캡처 중..."
+            chapters = await capture_chapter_screenshots(
+                url, chapters, config.VAULT_PATH, _safe_filename(result.title))
         t.progress = "저장 중..."
         note_id = await save_note(
             db_path=config.DB_PATH, vault_path=config.VAULT_PATH,
