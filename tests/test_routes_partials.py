@@ -12,3 +12,4 @@ async def test_pdf_input_partial_uses_label_wrapped_input():
     assert '<label' in resp.text
     assert 'class="hidden"' in resp.text
     assert 'pdf-filename' in resp.text
+    assert 'hx-post="/api/pdf"' in resp.text

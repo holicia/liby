@@ -1,7 +1,9 @@
-<form hx-post="/api/pdf" hx-target="#queue-panel" hx-swap="beforeend" hx-encoding="multipart/form-data" hx-include="#current-project" class="flex gap-2 items-center">
+<form hx-post="/api/pdf" hx-target="#queue-panel" hx-swap="beforeend" hx-encoding="multipart/form-data" hx-include="#current-project"
+      hx-on::after-request="if(event.detail.successful){this.reset(); document.getElementById('pdf-filename').textContent='선택된 파일 없음';}"
+      class="flex gap-2 items-center">
   <label class="flex-1 cursor-pointer flex items-center gap-2 bg-white border border-[#E2E8E4] rounded-lg px-3 py-2 text-xs text-gray-500 dark:bg-gray-800 hover:border-[#1F6F4A]">
     <span class="font-medium">📎 파일 선택</span>
-    <span id="pdf-filename" class="text-gray-400 truncate">선택된 파일 없음</span>
+    <span id="pdf-filename" class="text-gray-400 dark:text-gray-400 truncate">선택된 파일 없음</span>
     <input name="file" type="file" accept=".pdf" required class="hidden"
            onchange="document.getElementById('pdf-filename').textContent=this.files[0]?.name||'선택된 파일 없음'">
   </label>
