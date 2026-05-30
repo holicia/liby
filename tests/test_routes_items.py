@@ -265,3 +265,15 @@ async def test_delete_item_swallows_missing_file(tmp_path):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.delete("/api/items/1")
     assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_card_renders_delete_button():
+    """카드에 hx-delete 휴지통 버튼이 렌더돼야 한다."""
+    with patch("routers.items.list_notes", return_value=[MOCK_NOTE]), \
+         patch("routers.items.list_projects", return_value=[]):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items")
+    assert resp.status_code == 200
+    assert 'hx-delete="/api/items/1"' in resp.text
+    assert 'id="note-card-1"' in resp.text
