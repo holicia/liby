@@ -29,6 +29,7 @@ def _capture_one_sync(url: str, t: int, out_jpg: str) -> bool:
             ydl.download([url])
         files = os.listdir(tmp_dir)
         if not files:
+            log.warning(f"capture: yt-dlp produced no file at t={t} for {url}")
             return False
         tmp_video = os.path.join(tmp_dir, files[0])
         result = subprocess.run(
