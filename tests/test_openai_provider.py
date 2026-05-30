@@ -44,7 +44,10 @@ async def test_openai_summarize_detailed_builds_sections(provider):
         "title": "T", "language": "ko", "summary": "한 줄",
         "tags": ["x"], "suggested_topic": "AI",
         "sections": [{"heading": "1. A", "subsections": [
-            {"heading": "1.1 B", "items": [{"lead": "L", "bullets": ["b1"]}]}]}],
+            {"heading": "1.1 B", "items": [
+                {"text": "문단 1", "quote": "원문", "t": 30},
+                {"text": "문단 2"},
+            ]}]}],
     }, ensure_ascii=False)))]
     tier2.usage = MagicMock(prompt_tokens=10, completion_tokens=10)
     tier3 = MagicMock()
@@ -54,7 +57,26 @@ async def test_openai_summarize_detailed_builds_sections(provider):
     with patch.object(provider._client.chat.completions, "create",
                       new_callable=AsyncMock, side_effect=[tier2, tier3]):
         res = await provider.summarize("text", "pdf", "detailed", [])
-    assert res.sections[0]["subsections"][0]["items"][0]["lead"] == "L"
+    items = res.sections[0]["subsections"][0]["items"]
+    assert items[0] == {"text": "문단 1", "quote": "원문", "t": 30}
+    assert items[1] == {"text": "문단 2"}
     assert res.insights == ["i"]
     assert res.questions_raised == ["q"]
     assert res.summary_mode == "detailed"
+
+
+@pytest.mark.asyncio
+async def test_openai_quick_returns_paragraphs(provider):
+    import json
+    tier2 = MagicMock()
+    tier2.choices = [MagicMock(message=MagicMock(content=json.dumps({
+        "title": "T", "language": "ko", "word_count": 100, "reading_time_min": 1,
+        "sections": [], "summary": "요약",
+        "paragraphs": [{"text": "문단", "quote": "인용"}],
+        "tags": [], "suggested_topic": "",
+    }, ensure_ascii=False)))]
+    tier2.usage = MagicMock(prompt_tokens=10, completion_tokens=10)
+    with patch.object(provider._client.chat.completions, "create",
+                      new_callable=AsyncMock, return_value=tier2):
+        res = await provider.summarize("text", "youtube", "quick", [])
+    assert res.paragraphs == [{"text": "문단", "quote": "인용"}]

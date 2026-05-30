@@ -1,7 +1,7 @@
 import json
 from openai import AsyncOpenAI
 from services.ai.base import AIProvider, SummaryResult
-from services.ai.claude import TIER2_PROMPT, TIER2_CODE_PROMPT, TIER3_PROMPT, CHAPTERS_PROMPT, DETAILED_PROMPT, TRANSLATE_CHAPTERS_PROMPT, _build_chapters, _build_sections
+from services.ai.claude import TIER2_PROMPT, TIER2_CODE_PROMPT, TIER3_PROMPT, CHAPTERS_PROMPT, DETAILED_PROMPT, TRANSLATE_CHAPTERS_PROMPT, _build_chapters, _build_sections, _build_paragraphs
 import config
 
 GPT_PRICING: dict[str, dict[str, float]] = {
@@ -61,6 +61,7 @@ class OpenAIProvider(AIProvider):
             sections=_build_sections(data),
             summary=data.get("summary", ""),
             key_points=data.get("key_points", []),
+            paragraphs=_build_paragraphs(data),
             tags=data.get("tags", []),
             suggested_topic=data.get("suggested_topic", ""),
             summary_mode=mode,

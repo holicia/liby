@@ -9,30 +9,28 @@ def provider():
     return ClaudeProvider(api_key="test-key")
 
 @pytest.mark.asyncio
-async def test_summarize_quick_returns_summary_result(provider):
-    mock_response = MagicMock()
-    mock_response.content = [MagicMock(text="""
-{
-  "title": "LLM 개요",
-  "language": "ko",
-  "word_count": 100,
-  "reading_time_min": 1,
-  "sections": [],
-  "summary": "LLM은 대규모 언어 모델이다.",
-  "key_points": ["핵심1", "핵심2"],
-  "tags": ["AI", "LLM"],
-  "suggested_topic": "AI/ML"
-}
-""")]
-    mock_response.usage = MagicMock(input_tokens=100, output_tokens=50)
-
-    with patch.object(provider._client.messages, "create", new_callable=AsyncMock, return_value=mock_response):
-        result = await provider.summarize(SAMPLE_TEXT, "youtube", "quick", ["AI/ML"])
-
-    assert result.title == "LLM 개요"
-    assert result.summary_mode == "quick"
-    assert result.main_arguments is None
-    assert result.cost_usd > 0
+async def test_summarize_quick_returns_paragraphs(provider):
+    import json
+    resp = MagicMock()
+    resp.content = [MagicMock(text=json.dumps({
+        "title": "T", "language": "ko", "word_count": 100, "reading_time_min": 1,
+        "sections": [],
+        "summary": "한 줄 요약 2~3문장.",
+        "paragraphs": [
+            {"text": "첫 문단", "quote": "원문 인용", "t": 12},
+            {"text": "두 번째 문단"},
+        ],
+        "tags": ["x"], "suggested_topic": "AI/ML",
+    }, ensure_ascii=False))]
+    resp.usage = MagicMock(input_tokens=10, output_tokens=10)
+    with patch.object(provider._client.messages, "create", new_callable=AsyncMock, return_value=resp):
+        res = await provider.summarize("text", "youtube", "quick", [])
+    assert res.summary == "한 줄 요약 2~3문장."
+    assert res.paragraphs == [
+        {"text": "첫 문단", "quote": "원문 인용", "t": 12},
+        {"text": "두 번째 문단"},
+    ]
+    assert res.summary_mode == "quick"
 
 @pytest.mark.asyncio
 async def test_summarize_quick_mode_skips_tier3(provider):
@@ -130,7 +128,10 @@ async def test_summarize_detailed_builds_sections(provider):
         "title": "T", "language": "ko", "summary": "한 줄 요약",
         "tags": ["x"], "suggested_topic": "AI",
         "sections": [{"heading": "1. A", "t": 0, "subsections": [
-            {"heading": "1.1 B", "items": [{"lead": "L", "t": 30, "bullets": ["b1"]}]}]}],
+            {"heading": "1.1 B", "items": [
+                {"text": "문단 1", "quote": "원문", "t": 30},
+                {"text": "문단 2"},
+            ]}]}],
     }, ensure_ascii=False))]
     tier2.usage = MagicMock(input_tokens=10, output_tokens=10)
     tier3 = MagicMock()
@@ -139,11 +140,10 @@ async def test_summarize_detailed_builds_sections(provider):
     with patch.object(provider._client.messages, "create",
                       new_callable=AsyncMock, side_effect=[tier2, tier3]):
         res = await provider.summarize("[0:00] hi", "youtube", "detailed", [])
-    assert res.sections[0]["heading"] == "1. A"
-    assert res.sections[0]["subsections"][0]["items"][0]["t"] == 30
+    items = res.sections[0]["subsections"][0]["items"]
+    assert items[0] == {"text": "문단 1", "quote": "원문", "t": 30}
+    assert items[1] == {"text": "문단 2"}
     assert res.insights == ["i"]
-    assert res.questions_raised == ["q"]
-    assert res.summary == "한 줄 요약"
 
 
 @pytest.mark.asyncio

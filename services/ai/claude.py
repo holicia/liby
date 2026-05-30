@@ -107,10 +107,14 @@ TIER2_PROMPT = """다음 내용을 분석하여 노트를 작성하세요.
 JSON으로 응답하세요:
 {{"title": "제목", "language": "ko|en", "word_count": 숫자,
   "reading_time_min": 숫자, "sections": [],
-  "summary": "5~10문장 요약",
-  "key_points": ["핵심1", "핵심2", "핵심3"],
+  "summary": "2~3문장 요약",
+  "paragraphs": [
+    {{"text": "문단 본문 (2~4문장)", "quote": "원문에서 가져온 인용구 (선택)", "t": 초단위정수_타임스탬프있을때만}},
+    {{"text": "두 번째 문단"}}
+  ],
   "tags": ["태그1", "태그2"],
-  "suggested_topic": "기존_주제_중_하나_또는_새_주제명"}}"""
+  "suggested_topic": "기존_주제_중_하나_또는_새_주제명"}}
+(paragraphs는 3~6개, quote·t는 해당 내용이 있을 때만 포함하세요.)"""
 
 TIER2_CODE_PROMPT = """다음 GitHub 레포지토리 정보를 분석하여 개발자 노트를 작성하세요.
 기존 주제 목록: {existing_topics}
@@ -124,10 +128,14 @@ JSON으로 응답하세요:
   "word_count": 0,
   "reading_time_min": 0,
   "sections": [],
-  "summary": "프로젝트 목적과 핵심 기능을 3~5문장으로 설명",
-  "key_points": ["기술 스택: ...", "주요 기능: ...", "아키텍처 특징: ..."],
+  "summary": "프로젝트 목적과 핵심 기능을 2~3문장으로 설명",
+  "paragraphs": [
+    {{"text": "기술 스택과 아키텍처 설명 (2~3문장)", "quote": "README 등에서 가져온 인용구 (선택)"}},
+    {{"text": "주요 기능 및 사용 사례 (2~3문장)"}}
+  ],
   "tags": ["언어", "프레임워크", "도메인키워드"],
-  "suggested_topic": "기존_주제_중_하나_또는_새_주제명"}}"""
+  "suggested_topic": "기존_주제_중_하나_또는_새_주제명"}}
+(paragraphs는 2~4개, quote는 있을 때만 포함하세요.)"""
 
 DETAILED_PROMPT = """다음 내용을 분석하여 상세 노트를 계층 구조로 작성하세요.
 기존 주제 목록: {existing_topics}
@@ -137,7 +145,8 @@ DETAILED_PROMPT = """다음 내용을 분석하여 상세 노트를 계층 구�
 
 규칙:
 - 본문을 5~12개의 의미 단위 대섹션(heading: "1. ...", "2. ...")으로 나눕니다.
-- 각 대섹션은 1개 이상의 소섹션(heading: "1.1 ...")을 가지며, 각 소섹션은 굵게 강조할 핵심 항목(lead)과 그 아래 2~5개의 세부 불릿(bullets)을 가집니다.
+- 각 대섹션은 1개 이상의 소섹션(heading: "1.1 ...")을 가지며, 각 소섹션은 2~5개의 items를 가집니다.
+- 각 item은 {{"text": "문단 본문", "quote": "원문 인용 (선택)", "t": 초단위정수 (선택)}} 형태입니다.
 - 입력 줄에 [m:ss] 형태의 타임스탬프가 있으면, 해당 섹션/소섹션/항목이 시작되는 지점의 t를 "초 단위 정수"로 채웁니다. 타임스탬프가 없으면 t는 생략합니다.
 
 JSON으로만 응답하세요:
@@ -148,11 +157,12 @@ JSON으로만 응답하세요:
   "sections": [
     {{"heading": "1. 대주제", "t": 10, "subsections": [
       {{"heading": "1.1 소주제", "items": [
-        {{"lead": "굵은 소제목", "bullets": ["세부 1", "세부 2"]}}
+        {{"text": "문단 본문", "quote": "원문 인용구", "t": 30}},
+        {{"text": "두 번째 문단"}}
       ]}}
     ]}}
   ]}}
-(위 예시에서 보듯 t는 타임스탬프가 있을 때만 넣고, 없으면 키 자체를 생략하세요.)"""
+(위 예시에서 보듯 t·quote는 해당 내용이 있을 때만 넣고, 없으면 키 자체를 생략하세요.)"""
 
 CHAPTERS_PROMPT = """다음은 타임스탬프가 붙은 영상 자막입니다. 영상을 5~12개의 의미 단위 챕터로 나누세요.
 각 챕터는 시작 시각(초)과 짧은 제목(라벨)으로 표현합니다. 시간 오름차순, 첫 챕터는 t=0.
@@ -235,6 +245,7 @@ class ClaudeProvider(AIProvider):
             sections=_build_sections(data),
             summary=data.get("summary", ""),
             key_points=data.get("key_points", []),
+            paragraphs=_build_paragraphs(data),
             tags=data.get("tags", []),
             suggested_topic=data.get("suggested_topic", ""),
             summary_mode=mode,
