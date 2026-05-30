@@ -15,11 +15,8 @@ class SummaryResult:
     tags: list[str]
     suggested_topic: str
     summary_mode: str  # "quick" | "detailed"
-    main_arguments: Optional[list[str]] = None
     insights: Optional[list[str]] = None
     questions_raised: Optional[list[str]] = None
-    zettel_links: Optional[list[int]] = None
-    related_concepts: Optional[list[str]] = None
     paragraphs: list[dict] = field(default_factory=list)  # 신규: 빠른/상세 모두 본문 단위 [{text, quote?, t?}]
     cost_usd: float = 0.0
     models_used: list[str] = field(default_factory=list)

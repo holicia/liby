@@ -13,7 +13,6 @@ def test_summary_result_quick_defaults():
         suggested_topic="AI/ML",
         summary_mode="quick",
     )
-    assert r.main_arguments is None
     assert r.insights is None
     assert r.summary_mode == "quick"
 

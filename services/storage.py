@@ -120,20 +120,18 @@ async def save_note(
         cursor = await db.execute(
             """INSERT INTO items
                (type, title, source_url, summary, key_points, sections, tags, topic,
-                summary_mode, main_arguments, insights, questions_raised,
-                related_concepts, ai_provider, ai_models, api_cost_usd, md_file_path, project_id,
+                summary_mode, insights, questions_raised,
+                ai_provider, ai_models, api_cost_usd, md_file_path, project_id,
                 timeline, paragraphs)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 source_type, result.title, source_url, result.summary,
                 json.dumps(result.key_points, ensure_ascii=False),
                 json.dumps(result.sections, ensure_ascii=False),
                 json.dumps(result.tags, ensure_ascii=False),
                 result.suggested_topic, result.summary_mode,
-                json.dumps(result.main_arguments or [], ensure_ascii=False),
                 json.dumps(result.insights or [], ensure_ascii=False),
                 json.dumps(result.questions_raised or [], ensure_ascii=False),
-                json.dumps(result.related_concepts or [], ensure_ascii=False),
                 ai_provider,
                 json.dumps(result.models_used, ensure_ascii=False),
                 result.cost_usd, md_path, project_id,
@@ -175,8 +173,8 @@ async def get_monthly_cost(db_path: str, provider: str) -> float:
         row = await cursor.fetchone()
         return row[0] if row else 0.0
 
-_JSON_FIELDS = ("tags", "key_points", "sections", "main_arguments",
-                "insights", "questions_raised", "related_concepts", "ai_models", "timeline", "paragraphs")
+_JSON_FIELDS = ("tags", "key_points", "sections",
+                "insights", "questions_raised", "ai_models", "timeline", "paragraphs")
 
 def _parse_row(row: dict) -> dict:
     for field in _JSON_FIELDS:
@@ -230,17 +228,15 @@ async def upgrade_to_detailed(
                summary_mode='detailed',
                sections=?,
                paragraphs=COALESCE(NULLIF(?, '[]'), paragraphs),
-               main_arguments=?, insights=?, questions_raised=?,
-               related_concepts=?, api_cost_usd=api_cost_usd+?,
+               insights=?, questions_raised=?,
+               api_cost_usd=api_cost_usd+?,
                updated_at=CURRENT_TIMESTAMP
                WHERE id=?""",
             (
                 json.dumps(result.sections or [], ensure_ascii=False),
                 json.dumps(result.paragraphs or [], ensure_ascii=False),
-                json.dumps(result.main_arguments or [], ensure_ascii=False),
                 json.dumps(result.insights or [], ensure_ascii=False),
                 json.dumps(result.questions_raised or [], ensure_ascii=False),
-                json.dumps(result.related_concepts or [], ensure_ascii=False),
                 result.cost_usd, note_id,
             )
         )

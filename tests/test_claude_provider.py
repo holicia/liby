@@ -50,7 +50,7 @@ async def test_summarize_quick_mode_skips_tier3(provider):
 
     # quick 모드에서는 Tier2까지만 → create 호출 1회
     assert mock_create.call_count == 1
-    assert result.main_arguments is None
+    assert result.insights is None
 
 def test_provider_name(provider):
     assert provider.name() == "claude"
