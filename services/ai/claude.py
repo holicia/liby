@@ -54,11 +54,13 @@ def _build_sections(data: dict) -> list[dict]:
             for it in sub.get("items", []):
                 if not isinstance(it, dict):
                     continue
-                lead = str(it.get("lead", "")).strip()
-                bullets = [str(b).strip() for b in it.get("bullets", []) if str(b).strip()]
-                if not lead and not bullets:
+                text = str(it.get("text", "")).strip()
+                if not text:
                     continue
-                item = {"lead": lead, "bullets": bullets}
+                item = {"text": text}
+                quote = str(it.get("quote", "")).strip()
+                if quote:
+                    item["quote"] = quote
                 t = _to_t(it.get("t"))
                 if t is not None:
                     item["t"] = t

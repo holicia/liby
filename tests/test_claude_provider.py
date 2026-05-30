@@ -99,14 +99,17 @@ def test_build_sections_hierarchy_and_timestamps():
     data = {"sections": [
         {"heading": "1. 대주제", "t": "0", "subsections": [
             {"heading": "1.1 소주제", "t": 90, "items": [
-                {"lead": "리드", "t": "1:30", "bullets": ["a", "b", ""]},
+                {"text": "  문단 본문  ", "quote": "  원문 인용  ", "t": 30},
+                {"text": "두 번째 문단"},
+                {"text": "", "quote": "x"},
             ]},
         ]},
     ]}
     assert _build_sections(data) == [
         {"heading": "1. 대주제", "t": 0, "subsections": [
             {"heading": "1.1 소주제", "t": 90, "items": [
-                {"lead": "리드", "bullets": ["a", "b"]},  # "1:30"은 숫자 아님 → t 생략, 빈 불릿 제거
+                {"text": "문단 본문", "quote": "원문 인용", "t": 30},
+                {"text": "두 번째 문단"},
             ]},
         ]},
     ]
