@@ -13,3 +13,12 @@ async def test_pdf_input_partial_uses_label_wrapped_input():
     assert 'class="hidden"' in resp.text
     assert 'pdf-filename' in resp.text
     assert 'hx-post="/api/pdf"' in resp.text
+
+
+@pytest.mark.asyncio
+async def test_api_cost_partial_uses_new_header_text():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        resp = await c.get("/api/settings/cost")
+    assert resp.status_code == 200
+    assert "API 사용 현황" in resp.text
+    assert "이번 달 API" not in resp.text
