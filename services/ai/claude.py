@@ -285,7 +285,7 @@ class ClaudeProvider(AIProvider):
         model = config.CLAUDE_MODELS["tier2"]
         if mode == "detailed":
             template = DETAILED_PROMPT
-            max_tokens = 8192  # 계층형 sections 출력이 커서 4096이면 JSON이 잘림
+            max_tokens = 16384  # 청킹 + sections+items+refs 출력이 8192면 JSON이 잘림
         else:
             template = TIER2_CODE_PROMPT if source_type == "code" else TIER2_PROMPT
             max_tokens = 4096
