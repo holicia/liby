@@ -166,7 +166,7 @@ async def test_translate_chapters_empty_returns_empty(provider):
     assert chapters == [] and cost == 0.0
 
 
-def test_build_paragraphs_keeps_text_quote_and_t():
+def test_build_paragraphs_keeps_text_and_refs():
     from services.ai.claude import _build_paragraphs
     data = {"paragraphs": [
         {"text": "  문단 1  ", "refs": [{"t": "30", "snippet": "원문"}, {"t": 60}]},

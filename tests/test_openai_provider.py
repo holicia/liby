@@ -62,6 +62,9 @@ async def test_openai_summarize_detailed_builds_sections(provider):
     items = res.sections[0]["subsections"][0]["items"]
     assert items[0] == {"text": "문단 1", "refs": [{"t": 30, "snippet": "원문"}]}
     assert items[1] == {"text": "문단 2", "refs": []}
+    assert res.insights == ["i"]
+    assert res.questions_raised == ["q"]
+    assert res.summary_mode == "detailed"
 
 
 @pytest.mark.asyncio
