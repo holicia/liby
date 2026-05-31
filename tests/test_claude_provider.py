@@ -239,3 +239,74 @@ def test_renumber_sections_resets_section_and_subsection_indices():
             {"heading": "2.1 z", "items": []},
         ]},
     ]
+
+
+@pytest.mark.asyncio
+async def test_summarize_short_text_uses_single_call(provider):
+    """text 길이가 18K 미만이면 _summarize_single 1회만 호출 (chunking 안 함)."""
+    import json
+    resp = MagicMock()
+    resp.content = [MagicMock(text=json.dumps({
+        "title": "T", "language": "ko", "word_count": 100, "reading_time_min": 1,
+        "sections": [], "summary": "요약",
+        "paragraphs": [{"text": "문단", "refs": []}],
+        "tags": [], "suggested_topic": "",
+    }, ensure_ascii=False))]
+    resp.usage = MagicMock(input_tokens=10, output_tokens=10)
+    with patch.object(provider._client.messages, "create", new_callable=AsyncMock, return_value=resp) as mock_create:
+        res = await provider.summarize("짧은 텍스트", "youtube", "quick", [])
+    assert mock_create.call_count == 1
+    assert res.paragraphs == [{"text": "문단", "refs": []}]
+
+
+@pytest.mark.asyncio
+async def test_summarize_long_text_chunks_and_merges(provider):
+    """text가 18K 초과면 chunk별 호출 + merge LLM 호출."""
+    import json
+    long_text = "\n".join([f"[{i}:00] " + ("가" * 3000) for i in range(7)])
+
+    chunk_resp = MagicMock()
+    chunk_resp.content = [MagicMock(text=json.dumps({
+        "title": "T", "language": "ko", "word_count": 100, "reading_time_min": 1,
+        "sections": [], "summary": "부분 요약",
+        "paragraphs": [{"text": "문단", "refs": []}],
+        "tags": ["x"], "suggested_topic": "AI",
+    }, ensure_ascii=False))]
+    chunk_resp.usage = MagicMock(input_tokens=10, output_tokens=10)
+
+    merge_resp = MagicMock()
+    merge_resp.content = [MagicMock(text=json.dumps({
+        "summary": "통합된 한 줄 요약입니다.",
+    }, ensure_ascii=False))]
+    merge_resp.usage = MagicMock(input_tokens=5, output_tokens=5)
+
+    # 충분한 응답 준비 (chunk수 + 1 merge)
+    with patch.object(provider._client.messages, "create",
+                      new_callable=AsyncMock,
+                      side_effect=[chunk_resp, chunk_resp, chunk_resp, merge_resp]) as mock_create:
+        res = await provider.summarize(long_text, "youtube", "quick", [])
+    assert mock_create.call_count >= 3
+    assert res.summary == "통합된 한 줄 요약입니다."
+    assert len(res.paragraphs) >= 2
+
+
+@pytest.mark.asyncio
+async def test_summarize_chunked_falls_back_when_merge_fails(provider):
+    """merge LLM 호출이 실패하면 partials[0].summary로 fallback."""
+    import json
+    long_text = "\n".join([f"[{i}:00] " + ("가" * 3000) for i in range(7)])
+
+    chunk_resp = MagicMock()
+    chunk_resp.content = [MagicMock(text=json.dumps({
+        "title": "T", "language": "ko", "word_count": 100, "reading_time_min": 1,
+        "sections": [], "summary": "첫 partial 요약",
+        "paragraphs": [{"text": "문단", "refs": []}],
+        "tags": [], "suggested_topic": "",
+    }, ensure_ascii=False))]
+    chunk_resp.usage = MagicMock(input_tokens=10, output_tokens=10)
+
+    with patch.object(provider._client.messages, "create",
+                      new_callable=AsyncMock,
+                      side_effect=[chunk_resp, chunk_resp, chunk_resp, Exception("merge fail")]):
+        res = await provider.summarize(long_text, "youtube", "quick", [])
+    assert res.summary == "첫 partial 요약"

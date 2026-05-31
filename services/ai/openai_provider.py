@@ -28,7 +28,22 @@ class OpenAIProvider(AIProvider):
         mode: str,
         existing_topics: list[str],
     ) -> SummaryResult:
-        return await self._summarize_single(text, source_type, mode, existing_topics)
+        from services.ai.claude import CHUNK_THRESHOLD
+        if len(text) <= CHUNK_THRESHOLD:
+            return await self._summarize_single(text, source_type, mode, existing_topics)
+        from services.extractor import _chunk_for_llm
+        chunks = _chunk_for_llm(text)
+        partials: list[SummaryResult] = []
+        for chunk in chunks:
+            try:
+                partial = await self._summarize_single(chunk, source_type, mode, existing_topics)
+                partials.append(partial)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"chunk {len(partials)+1} failed: {e}")
+        if not partials:
+            raise ValueError("청킹 분석 실패: 모든 chunk 호출 실패")
+        return await self._merge_partials(partials, mode)
 
     async def _summarize_single(
         self,

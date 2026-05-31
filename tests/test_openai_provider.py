@@ -82,3 +82,31 @@ async def test_openai_quick_returns_paragraphs(provider):
                       new_callable=AsyncMock, return_value=tier2):
         res = await provider.summarize("text", "youtube", "quick", [])
     assert res.paragraphs == [{"text": "문단", "refs": [{"t": 30, "snippet": "원문"}]}]
+
+
+@pytest.mark.asyncio
+async def test_openai_summarize_long_text_chunks_and_merges(provider):
+    import json
+    long_text = "\n".join([f"[{i}:00] " + ("가" * 3000) for i in range(7)])
+
+    chunk_resp = MagicMock()
+    chunk_resp.choices = [MagicMock(message=MagicMock(content=json.dumps({
+        "title": "T", "language": "ko", "word_count": 100, "reading_time_min": 1,
+        "sections": [], "summary": "부분",
+        "paragraphs": [{"text": "문단", "refs": []}],
+        "tags": [], "suggested_topic": "",
+    }, ensure_ascii=False)))]
+    chunk_resp.usage = MagicMock(prompt_tokens=10, completion_tokens=10)
+
+    merge_resp = MagicMock()
+    merge_resp.choices = [MagicMock(message=MagicMock(content=json.dumps({
+        "summary": "통합 요약",
+    }, ensure_ascii=False)))]
+    merge_resp.usage = MagicMock(prompt_tokens=5, completion_tokens=5)
+
+    with patch.object(provider._client.chat.completions, "create",
+                      new_callable=AsyncMock,
+                      side_effect=[chunk_resp, chunk_resp, chunk_resp, merge_resp]) as mock_create:
+        res = await provider.summarize(long_text, "youtube", "quick", [])
+    assert mock_create.call_count >= 3
+    assert res.summary == "통합 요약"
