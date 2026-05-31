@@ -245,6 +245,15 @@ class ClaudeProvider(AIProvider):
         mode: str,
         existing_topics: list[str],
     ) -> SummaryResult:
+        return await self._summarize_single(text, source_type, mode, existing_topics)
+
+    async def _summarize_single(
+        self,
+        text: str,
+        source_type: str,
+        mode: str,
+        existing_topics: list[str],
+    ) -> SummaryResult:
         total_cost = 0.0
         models_used: list[str] = []
 
