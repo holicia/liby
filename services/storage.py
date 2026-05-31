@@ -205,6 +205,24 @@ async def get_monthly_cost(db_path: str, provider: str) -> float:
         row = await cursor.fetchone()
         return row[0] if row else 0.0
 
+
+async def list_recent_api_costs(db_path: str, limit: int = 100) -> list[dict]:
+    """최근 API 호출 내역(노트 제목·type LEFT JOIN). recorded_at 내림차순."""
+    async with aiosqlite.connect(db_path) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """SELECT api_costs.recorded_at, api_costs.provider, api_costs.model,
+                      api_costs.cost_usd, api_costs.item_id,
+                      items.title AS note_title, items.type AS note_type
+               FROM api_costs
+               LEFT JOIN items ON items.id = api_costs.item_id
+               ORDER BY api_costs.recorded_at DESC, api_costs.id DESC
+               LIMIT ?""",
+            (limit,),
+        )
+        rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
+
 _JSON_FIELDS = ("tags", "key_points", "sections",
                 "insights", "questions_raised", "ai_models", "timeline", "paragraphs",
                 "transcript_segments")

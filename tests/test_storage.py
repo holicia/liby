@@ -54,6 +54,33 @@ async def test_save_note_creates_md_file(db, tmp_path):
     assert len(md_files) == 1
 
 @pytest.mark.asyncio
+async def test_list_recent_api_costs_orders_desc_and_joins_note_title(db, tmp_path):
+    """list_recent_api_costs는 recorded_at desc 정렬 + items 테이블 LEFT JOIN."""
+    from services.storage import list_recent_api_costs
+    nid = await save_note(
+        db_path=db, vault_path=str(tmp_path / "vault"),
+        source_type="youtube", source_url="u",
+        result=make_result(), ai_provider="claude",
+    )
+    await record_api_cost(db, provider="claude", model="claude-sonnet-4-6",
+                          input_tokens=10, output_tokens=20, cost_usd=0.001, item_id=nid)
+    await record_api_cost(db, provider="gpt", model="gpt-4o",
+                          input_tokens=5, output_tokens=10, cost_usd=0.002, item_id=nid)
+    await record_api_cost(db, provider="claude", model="claude-haiku-4-5",
+                          input_tokens=2, output_tokens=3, cost_usd=0.0001, item_id=None)
+    rows = await list_recent_api_costs(db, limit=10)
+    assert len(rows) == 3
+    # 최신순(가장 마지막 insert가 맨 앞)
+    assert rows[0]["model"] == "claude-haiku-4-5"
+    # item_id=nid인 row는 note_title도 함께
+    titled = [r for r in rows if r["item_id"] == nid]
+    assert all(r["note_title"] == "테스트 노트" for r in titled)
+    # item_id None은 note_title도 None
+    orphan = [r for r in rows if r["item_id"] is None]
+    assert orphan and orphan[0]["note_title"] is None
+
+
+@pytest.mark.asyncio
 async def test_record_and_get_monthly_cost(db):
     await record_api_cost(db, provider="claude", model="claude-sonnet-4-6",
                           input_tokens=1000, output_tokens=500, cost_usd=0.01)

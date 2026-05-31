@@ -80,7 +80,7 @@
     <!-- API COST FOOTER -->
     <div id="api-cost-widget"
          hx-get="/api/settings/cost"
-         hx-trigger="load, every 60s"
+         hx-trigger="load, every 60s, noteCompleted from:body"
          hx-swap="innerHTML">
     </div>
   </aside>

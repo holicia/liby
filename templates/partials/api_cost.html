@@ -1,7 +1,7 @@
 <div class="border-t border-[#E2E8E4] p-3 dark:border-gray-700">
   <div class="flex justify-between items-center mb-2">
     <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">API 사용 현황</span>
-    <span class="text-[10px] text-[#1F6F4A] cursor-pointer">상세</span>
+    <a href="/api/settings/usage" target="_blank" class="text-[10px] text-[#1F6F4A] hover:underline">상세</a>
   </div>
 
   {% for name, cost, limit, color in [

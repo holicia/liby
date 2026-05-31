@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>API 사용 현황 — liby</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100">
+
+<header class="border-b border-[#E2E8E4] dark:border-gray-700 px-5 py-3 flex items-center gap-3">
+  <a href="/" class="text-[#1F6F4A] dark:text-[#34A66A] font-bold">📚 liby</a>
+  <span class="text-gray-400 text-sm">/</span>
+  <h1 class="text-sm font-semibold text-gray-700 dark:text-gray-200">API 사용 현황</h1>
+</header>
+
+<div class="p-4 max-w-screen-lg mx-auto space-y-6">
+
+  <!-- 누적 카드 -->
+  <section class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    {% for name, cost, limit, color in [
+      ("Claude", claude_cost, claude_limit, "#8B5CF6"),
+      ("GPT",    gpt_cost,   gpt_limit,    "#22C55E")
+    ] %}
+    {% set pct = [((cost / (limit or 1)) * 100) | int, 100] | min %}
+    {% set status = "초과" if pct >= 100 else ("임박" if pct >= 80 else "정상") %}
+    <div class="border border-[#E2E8E4] dark:border-gray-700 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full" style="background:{{ color }}"></span>
+          <span class="text-sm font-semibold">{{ name }}</span>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded
+            {% if status == '정상' %}bg-[#EAF4EE] text-[#1F6F4A]
+            {% elif status == '임박' %}bg-yellow-100 text-yellow-700
+            {% else %}bg-red-100 text-red-600{% endif %}">{{ status }}</span>
+        </div>
+        <div>
+          <span class="text-base font-bold">${{ "%.2f"|format(cost) }}</span>
+          <span class="text-xs text-gray-400">/ ${{ "%.2f"|format(limit) }}</span>
+        </div>
+      </div>
+      <div class="bg-[#E2E8E4] dark:bg-gray-700 rounded h-2 overflow-hidden">
+        <div class="h-full rounded" style="width:{{ pct }}%; background:{{ color }}; opacity:.75;"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+
+  <!-- 최근 호출 표 -->
+  <section>
+    <h2 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">최근 호출 (최대 100건)</h2>
+    {% if rows %}
+    <div class="overflow-x-auto border border-[#E2E8E4] dark:border-gray-700 rounded-lg">
+      <table class="w-full text-sm">
+        <thead class="bg-[#F3F5F4] dark:bg-gray-800 text-[11px] text-gray-500 uppercase">
+          <tr>
+            <th class="text-left px-3 py-2 font-semibold">일시 (KST)</th>
+            <th class="text-left px-3 py-2 font-semibold">노트</th>
+            <th class="text-left px-3 py-2 font-semibold">Provider</th>
+            <th class="text-left px-3 py-2 font-semibold">Model</th>
+            <th class="text-right px-3 py-2 font-semibold">Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr class="border-t border-[#E2E8E4] dark:border-gray-700 text-[12px]">
+            <td class="px-3 py-1.5 text-gray-500 font-mono whitespace-nowrap">{{ r.recorded_at_kst }}</td>
+            <td class="px-3 py-1.5">
+              {% if r.note_title %}
+              <span class="text-[10px] bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] px-1.5 py-0.5 rounded font-bold mr-1">{{ (r.note_type or '?')|upper }}</span>
+              {{ r.note_title }}
+              {% else %}
+              <span class="text-gray-400">(삭제된 노트)</span>
+              {% endif %}
+            </td>
+            <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ r.provider }}</td>
+            <td class="px-3 py-1.5 text-gray-500 font-mono">{{ r.model or '-' }}</td>
+            <td class="px-3 py-1.5 text-right font-mono">${{ "%.4f"|format(r.cost_usd or 0) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-gray-400 text-sm">아직 호출 기록이 없습니다.</p>
+    {% endif %}
+  </section>
+</div>
+
+</body>
+</html>
