@@ -281,6 +281,21 @@ def test_make_md_content_quick_paragraphs():
     assert "## 핵심 포인트" not in md
 
 
+def test_make_md_content_uses_kst_for_created_date():
+    """frontmatter created 날짜가 KST 기준이어야 한다 (서버 timezone 무관)."""
+    from services.storage import _make_md_content, KST
+    from datetime import datetime
+    from services.ai.base import SummaryResult
+    r = SummaryResult(
+        title="T", language="ko", word_count=0, reading_time_min=0,
+        sections=[], summary="s", key_points=[], tags=[], suggested_topic="",
+        summary_mode="quick",
+        paragraphs=[{"text": "문단"}])
+    md = _make_md_content("youtube", "u", r, "claude")
+    today_kst = datetime.now(KST).strftime("%Y-%m-%d")
+    assert f"created: {today_kst}" in md
+
+
 def test_make_md_content_item_with_text_key_takes_new_branch_even_if_empty():
     """text 키가 있으면(빈 문자열이어도) 신규 분기로 가야 한다(레거시 lead/bullets로 잘못 빠지지 않음)."""
     from services.storage import _make_md_content

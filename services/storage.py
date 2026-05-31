@@ -2,8 +2,11 @@ import json
 import os
 import re
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import aiosqlite
 from services.ai.base import SummaryResult
+
+KST = ZoneInfo("Asia/Seoul")
 
 def safe_filename(title: str) -> str:
     """제목을 파일명으로 안전하게 변환 (Windows 금지 문자 < > : " / \\ | ? * 및 공백 제거)."""
@@ -22,7 +25,7 @@ def _make_md_content(
     result: SummaryResult, ai_provider: str,
     project_name: str | None = None,
 ) -> str:
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(KST).strftime("%Y-%m-%d")
     lines = [
         "---",
         f'title: "{result.title}"',
@@ -121,7 +124,7 @@ async def save_note(
     timeline: list | None = None,
     segments: list | None = None,
 ) -> int:
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(KST).strftime("%Y-%m-%d")
     filename = f"{today}-{safe_filename(result.title)}.md"
     subdir = os.path.join(vault_path, source_type)
     os.makedirs(subdir, exist_ok=True)
