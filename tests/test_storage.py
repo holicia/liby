@@ -388,3 +388,25 @@ async def test_upgrade_to_detailed_preserves_existing_paragraphs(db, tmp_path):
     await upgrade_to_detailed(db, nid, detailed)
     note = await get_note(db, nid)
     assert note["paragraphs"] == [{"text": "기존 문단", "quote": "기존 인용", "t": 5}]
+
+
+@pytest.mark.asyncio
+async def test_save_note_with_segments(db, tmp_path):
+    segments = [{"t": 0, "text": "안녕"}, {"t": 5, "text": "코끼리"}]
+    nid = await save_note(
+        db_path=db, vault_path=str(tmp_path/"vault"), source_type="youtube",
+        source_url="u", result=make_result(), ai_provider="claude",
+        segments=segments,
+    )
+    note = await get_note(db, nid)
+    assert note["transcript_segments"] == segments
+
+
+@pytest.mark.asyncio
+async def test_save_note_segments_defaults_empty(db, tmp_path):
+    nid = await save_note(
+        db_path=db, vault_path=str(tmp_path/"vault"), source_type="text",
+        source_url="u", result=make_result(), ai_provider="claude",
+    )
+    note = await get_note(db, nid)
+    assert note["transcript_segments"] == []

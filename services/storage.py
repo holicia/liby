@@ -104,6 +104,7 @@ async def save_note(
     result: SummaryResult, ai_provider: str,
     project_id: int | None = None,
     timeline: list | None = None,
+    segments: list | None = None,
 ) -> int:
     today = datetime.now().strftime("%Y-%m-%d")
     filename = f"{today}-{safe_filename(result.title)}.md"
@@ -122,8 +123,8 @@ async def save_note(
                (type, title, source_url, summary, key_points, sections, tags, topic,
                 summary_mode, insights, questions_raised,
                 ai_provider, ai_models, api_cost_usd, md_file_path, project_id,
-                timeline, paragraphs)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                timeline, paragraphs, transcript_segments)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 source_type, result.title, source_url, result.summary,
                 json.dumps(result.key_points, ensure_ascii=False),
@@ -137,6 +138,7 @@ async def save_note(
                 result.cost_usd, md_path, project_id,
                 json.dumps(timeline or [], ensure_ascii=False),
                 json.dumps(result.paragraphs or [], ensure_ascii=False),
+                json.dumps(segments or [], ensure_ascii=False),
             )
         )
         await db.commit()
@@ -186,7 +188,8 @@ async def get_monthly_cost(db_path: str, provider: str) -> float:
         return row[0] if row else 0.0
 
 _JSON_FIELDS = ("tags", "key_points", "sections",
-                "insights", "questions_raised", "ai_models", "timeline", "paragraphs")
+                "insights", "questions_raised", "ai_models", "timeline", "paragraphs",
+                "transcript_segments")
 
 def _parse_row(row: dict) -> dict:
     for field in _JSON_FIELDS:

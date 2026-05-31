@@ -95,3 +95,15 @@ async def test_init_db_adds_paragraphs_column_idempotently(tmp_path):
         cur = await db.execute("PRAGMA table_info(items)")
         cols = [r[1] for r in await cur.fetchall()]
     assert "paragraphs" in cols
+
+
+@pytest.mark.asyncio
+async def test_init_db_adds_transcript_segments_column_idempotently(tmp_path):
+    import aiosqlite
+    db_path = str(tmp_path / "t.db")
+    await init_db(db_path)
+    await init_db(db_path)
+    async with aiosqlite.connect(db_path) as db:
+        cur = await db.execute("PRAGMA table_info(items)")
+        cols = [r[1] for r in await cur.fetchall()]
+    assert "transcript_segments" in cols

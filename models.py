@@ -72,6 +72,7 @@ async def init_db(db_path: str = config.DB_PATH) -> None:
         await _ensure_column(db, "project_id", "INTEGER")
         await _ensure_column(db, "timeline", "TEXT")
         await _ensure_column(db, "paragraphs", "TEXT")
+        await _ensure_column(db, "transcript_segments", "TEXT")
         await db.commit()
 
 
