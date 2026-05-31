@@ -195,3 +195,34 @@ async def test_youtube_pipes_chapters_with_images_to_save_note():
         {"t": 0, "label": "A", "image": "제목/ch-1.jpg"},
         {"t": 90, "label": "B", "image": "제목/ch-2.jpg"},
     ]
+
+
+@pytest.mark.asyncio
+async def test_youtube_pipes_segments_to_save_note():
+    """extract 결과의 segments가 save_note의 segments kwarg로 전달."""
+    captured = {}
+    async def fake_enqueue(task, fn): captured["fn"] = fn
+    fake_ai = AsyncMock(); fake_ai.name.return_value = "claude"
+    from services.ai.base import SummaryResult
+    fake_ai.summarize.return_value = SummaryResult(
+        title="T", language="ko", word_count=0, reading_time_min=0, sections=[],
+        summary="s", key_points=[], tags=[], suggested_topic="", summary_mode="quick",
+        paragraphs=[], cost_usd=0.0, models_used=["m"])
+
+    segments_payload = [{"t": 0, "text": "안녕"}, {"t": 5, "text": "코끼리"}]
+    with patch("routers.youtube.enqueue", new=fake_enqueue), \
+         patch("routers.youtube.get_provider", return_value=fake_ai), \
+         patch("routers.youtube.youtube_title", new_callable=AsyncMock, return_value="T"), \
+         patch("routers.youtube.extract_youtube_full", new_callable=AsyncMock,
+               return_value={"text": "x", "video_id": "v", "native_chapters": None,
+                             "segments": segments_payload}), \
+         patch("routers.youtube.save_note", new_callable=AsyncMock, return_value=1) as mock_save, \
+         patch("routers.youtube.record_api_cost", new_callable=AsyncMock), \
+         patch("routers.youtube.resolve_chapters", new_callable=AsyncMock, return_value=([], 0.0, "")), \
+         patch("routers.youtube.capture_chapter_screenshots", new_callable=AsyncMock, side_effect=lambda u,c,v,s: c):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            await c.post("/api/youtube", data={"url": "https://youtu.be/abc",
+                                               "provider": "claude", "mode": "quick"})
+        task = MagicMock(); task.note_id = None
+        await captured["fn"](task)
+    assert mock_save.call_args.kwargs["segments"] == segments_payload

@@ -63,6 +63,7 @@ async def analyze_youtube(
             db_path=config.DB_PATH, vault_path=config.VAULT_PATH,
             source_type="youtube", source_url=url,
             result=result, ai_provider=ai.name(), project_id=pid, timeline=chapters,
+            segments=data["segments"],
         )
         await record_api_cost(
             config.DB_PATH, ai.name(),
