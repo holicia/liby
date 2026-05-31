@@ -98,6 +98,23 @@ def _build_paragraphs(data: dict) -> list[dict]:
     return out
 
 
+def _build_refs(refs_raw: list) -> list[dict]:
+    """LLM 응답 ref list → [{t, snippet?}]. t 누락/비숫자 skip; snippet 비면 키 생략."""
+    out = []
+    for r in refs_raw:
+        if not isinstance(r, dict):
+            continue
+        t = _to_t(r.get("t"))
+        if t is None:
+            continue
+        ref = {"t": t}
+        snippet = str(r.get("snippet", "")).strip()
+        if snippet:
+            ref["snippet"] = snippet
+        out.append(ref)
+    return out
+
+
 TIER2_PROMPT = """다음 내용을 분석하여 노트를 작성하세요.
 기존 주제 목록: {existing_topics}
 

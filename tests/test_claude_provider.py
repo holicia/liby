@@ -187,3 +187,31 @@ def test_build_paragraphs_skips_invalid():
         {"text": "ok", "t": "1:30"},
     ]}
     assert _build_paragraphs(data) == [{"text": "ok"}]
+
+
+def test_build_refs_keeps_t_and_snippet():
+    from services.ai.claude import _build_refs
+    data = [
+        {"t": "30", "snippet": "  원문  "},
+        {"t": 90},
+    ]
+    assert _build_refs(data) == [
+        {"t": 30, "snippet": "원문"},
+        {"t": 90},
+    ]
+
+
+def test_build_refs_skips_invalid():
+    from services.ai.claude import _build_refs
+    data = [
+        "notdict",
+        {"snippet": "no t"},
+        {"t": "1:30", "snippet": "non-numeric t"},
+        {"t": 5, "snippet": ""},
+    ]
+    assert _build_refs(data) == [{"t": 5}]
+
+
+def test_build_refs_empty_input():
+    from services.ai.claude import _build_refs
+    assert _build_refs([]) == []
