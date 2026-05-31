@@ -325,3 +325,49 @@ async def test_modal_hides_screenshot_toggle_when_no_images():
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
     assert "📷 스크린샷 보기" not in resp.text
+
+
+@pytest.mark.asyncio
+async def test_modal_paragraph_refs_render_chips():
+    """refs 있는 quick paragraph → 모달에 [1][2] 첨자 노출."""
+    note = dict(MOCK_NOTE)
+    note["source_url"] = "https://youtu.be/dQw4w9WgXcY"
+    note["summary_mode"] = "quick"
+    note["paragraphs"] = [
+        {"text": "본문 한 줄.", "refs": [{"t": 30, "snippet": "원문1"}, {"t": 60, "snippet": "원문2"}]},
+    ]
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert "ytSeek(30)" in resp.text
+    assert "ytSeek(60)" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_modal_legacy_quote_paragraph_renders_single_chip():
+    """옛 노트(refs 없고 quote+t만 있음) → 첨자 1개로 fallback."""
+    note = dict(MOCK_NOTE)
+    note["source_url"] = "https://youtu.be/dQw4w9WgXcY"
+    note["summary_mode"] = "quick"
+    note["paragraphs"] = [
+        {"text": "옛 본문.", "quote": "옛 원문", "t": 42},
+    ]
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert "ytSeek(42)" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_modal_shows_full_screen_link_for_youtube():
+    """YouTube 노트 모달 우상단에 /items/{id}/read 링크 노출."""
+    note = dict(MOCK_NOTE)
+    note["source_url"] = "https://youtu.be/dQw4w9WgXcY"
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert 'href="/items/1/read"' in resp.text
+    assert "📖" in resp.text

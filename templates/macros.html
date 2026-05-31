@@ -1,0 +1,12 @@
+{% macro ref_chips(refs, video_id) %}
+{%- if refs and video_id -%}
+<span class="inline-flex gap-1 ml-1 align-super">
+  {%- for r in refs %}
+  <button type="button"
+          onclick="event.preventDefault(); event.stopPropagation(); ytSeek({{ r.t }})"
+          title="{{ r.snippet }}"
+          class="text-[10px] px-1 bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] hover:bg-[#1F6F4A] hover:text-white rounded transition-colors">{{ loop.index }}</button>
+  {%- endfor %}
+</span>
+{%- endif -%}
+{% endmacro %}

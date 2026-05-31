@@ -1,3 +1,4 @@
+{% from "macros.html" import ref_chips %}
 {% macro fmt_ts(t) -%}
 {{- "%d:%02d:%02d"|format(t // 3600, t % 3600 // 60, t % 60) if t >= 3600 else "%d:%02d"|format(t // 60, t % 60) -}}
 {%- endmacro %}
@@ -7,13 +8,19 @@
      onclick="if(event.target===this){closeNoteModal()}">
   <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl my-8 p-6 relative shadow-2xl">
     <!-- 삭제 -->
-    <button title="삭제" aria-label="삭제"
-            hx-delete="/api/items/{{ note.id }}"
+    <button hx-delete="/api/items/{{ note.id }}"
             hx-confirm="이 노트를 삭제하시겠어요? .md 파일도 함께 사라집니다."
             hx-target="#note-card-{{ note.id }}"
             hx-swap="outerHTML"
             hx-on::after-request="if(event.detail.successful) closeNoteModal()"
-            class="absolute top-4 right-14 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/40 transition-colors text-sm">🗑</button>
+            title="삭제" aria-label="삭제"
+            class="absolute top-4 right-24 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/40 transition-colors text-sm">🗑</button>
+    {% if video_id %}
+    <!-- 전체 화면 -->
+    <a href="/items/{{ note.id }}/read" target="_blank"
+       title="전체 화면" aria-label="전체 화면 보기"
+       class="absolute top-4 right-14 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 transition-colors text-sm">📖</a>
+    {% endif %}
     <!-- 닫기 -->
     <button onclick="closeNoteModal()"
             class="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 transition-colors text-sm font-bold">✕</button>
@@ -156,15 +163,12 @@
             <div class="space-y-3">
               {% for it in sub["items"] %}
               {% if it.text is defined %}
-              {# 신규: 문단 + 인용 (text 키가 있으면 신규 스키마) #}
+              {# 신규: 문단 + 첨자 (text 키가 있으면 신규 스키마) #}
               <div>
-                {% if it.text %}<p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">{{ it.text }}</p>{% endif %}
-                {% if it.quote %}
-                <blockquote class="border-l-4 border-[#1F6F4A]/40 pl-3 mt-1.5 text-[12px] italic text-gray-600 dark:text-gray-400">
-                  {% if it.t is defined and video_id %}<button type="button" onclick="event.preventDefault(); event.stopPropagation(); ytSeek({{ it.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline mr-1.5">⏱{{ fmt_ts(it.t) }}</button>{% endif %}
-                  &ldquo;{{ it.quote }}&rdquo;
-                </blockquote>
-                {% endif %}
+                {% set effective = it.refs if it.refs else ([{"t": it.t, "snippet": it.quote}] if (it.quote is defined and it.quote and it.t is defined) else []) %}
+                <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">
+                  {% if it.text %}{{ it.text }}{% endif %}{{ ref_chips(effective, video_id) }}
+                </p>
               </div>
               {% else %}
               {# 백워드 호환: 옛 {lead, bullets} #}
@@ -199,13 +203,10 @@
       <div class="space-y-3">
         {% for p in p_list %}
         <div>
-          <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">{{ p.text }}</p>
-          {% if p.quote %}
-          <blockquote class="border-l-4 border-[#1F6F4A]/40 pl-3 mt-1.5 text-[12px] italic text-gray-600 dark:text-gray-400">
-            {% if p.t is defined and video_id %}<button type="button" onclick="ytSeek({{ p.t }})" class="text-[11px] font-mono text-[#1F6F4A] dark:text-[#34A66A] hover:underline mr-1.5">⏱{{ fmt_ts(p.t) }}</button>{% endif %}
-            &ldquo;{{ p.quote }}&rdquo;
-          </blockquote>
-          {% endif %}
+          {% set effective = p.refs if p.refs else ([{"t": p.t, "snippet": p.quote}] if (p.quote is defined and p.quote and p.t is defined) else []) %}
+          <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">
+            {{ p.text }}{{ ref_chips(effective, video_id) }}
+          </p>
         </div>
         {% endfor %}
       </div>
