@@ -258,6 +258,20 @@ async def extract_pdf(file_path: str) -> str:
     return text
 
 
+def _chunk_range_hint(chunk: str) -> str:
+    """chunk text의 첫·마지막 줄에서 [m:ss] 타임스탬프를 추출해 \"[12:30] ~ [25:45]\" 형식 hint 반환.
+    타임스탬프 없으면 빈 문자열."""
+    if not chunk:
+        return ""
+    lines = chunk.split("\n")
+    pattern = re.compile(r'^\[(\d{1,2}:\d{2}(?::\d{2})?)\]')
+    first = next((m.group(1) for line in lines if (m := pattern.match(line))), None)
+    last = next((m.group(1) for line in reversed(lines) if (m := pattern.match(line))), None)
+    if not first or not last:
+        return ""
+    return f"[{first}] ~ [{last}]"
+
+
 def _chunk_for_llm(text: str, max_chars: int = 12000) -> list[str]:
     """text를 줄(\n) 단위로 묶어 max_chars 한도 안의 chunk list 반환.
     빈 text는 []. 한 줄이 max_chars보다 길면 그 줄 단독 chunk(잘리지 않음).

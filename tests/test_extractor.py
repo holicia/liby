@@ -104,6 +104,18 @@ def test_segments_to_transcript_empty_returns_empty_string():
     assert segments_to_transcript([]) == ""
 
 
+def test_chunk_range_hint_extracts_first_and_last_timestamp():
+    from services.extractor import _chunk_range_hint
+    chunk = "[12:30] 첫 줄\n[15:00] 중간\n[25:45] 마지막"
+    assert _chunk_range_hint(chunk) == "[12:30] ~ [25:45]"
+
+
+def test_chunk_range_hint_returns_empty_when_no_timestamps():
+    from services.extractor import _chunk_range_hint
+    assert _chunk_range_hint("일반 텍스트\n타임스탬프 없음") == ""
+    assert _chunk_range_hint("") == ""
+
+
 def test_chunk_for_llm_empty_returns_empty_list():
     from services.extractor import _chunk_for_llm
     assert _chunk_for_llm("") == []

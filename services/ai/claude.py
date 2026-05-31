@@ -260,12 +260,14 @@ class ClaudeProvider(AIProvider):
     ) -> SummaryResult:
         if len(text) <= CHUNK_THRESHOLD:
             return await self._summarize_single(text, source_type, mode, existing_topics)
-        from services.extractor import _chunk_for_llm
+        from services.extractor import _chunk_for_llm, _chunk_range_hint
         chunks = _chunk_for_llm(text)
         partials: list[SummaryResult] = []
         for chunk in chunks:
             try:
-                partial = await self._summarize_single(chunk, source_type, mode, existing_topics)
+                hint = _chunk_range_hint(chunk)
+                partial = await self._summarize_single(
+                    chunk, source_type, mode, existing_topics, chunk_info=hint)
                 partials.append(partial)
             except Exception as e:
                 import logging
@@ -280,6 +282,7 @@ class ClaudeProvider(AIProvider):
         source_type: str,
         mode: str,
         existing_topics: list[str],
+        chunk_info: str | None = None,
     ) -> SummaryResult:
         total_cost = 0.0
         models_used: list[str] = []
@@ -287,12 +290,17 @@ class ClaudeProvider(AIProvider):
         model = config.CLAUDE_MODELS["tier2"]
         if mode == "detailed":
             template = DETAILED_PROMPT
-            max_tokens = 16384  # 청킹 + sections+items+refs 출력이 8192면 JSON이 잘림
+            max_tokens = 16384
         else:
             template = TIER2_CODE_PROMPT if source_type == "code" else TIER2_PROMPT
             max_tokens = 4096
+        text_prefix = (
+            f"[조각 정보] 이 입력은 영상의 일부입니다: {chunk_info}. "
+            f"모든 sections/items/refs의 t는 반드시 이 범위 안의 [m:ss] 값을 그대로 사용하세요.\n\n"
+            if chunk_info else ""
+        )
         prompt = template.format(
-            text=text[:12000],
+            text=text_prefix + text[:12000],
             existing_topics=", ".join(existing_topics) or "없음",
         )
         resp = await self._client.messages.create(
