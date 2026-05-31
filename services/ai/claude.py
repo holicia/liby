@@ -196,6 +196,15 @@ JSON으로만 응답하세요:
   ]}}
 (t는 타임스탬프가 있을 때만 넣고, 없으면 키를 생략하세요.)"""
 
+SUMMARY_MERGE_PROMPT = """다음은 한 영상을 여러 조각으로 나눠 분석한 부분 요약들입니다.
+이를 합쳐 영상 전체를 자연스럽게 다루는 한국어 2~3문장 통합 요약을 작성하세요.
+
+부분 요약:
+{partials}
+
+JSON으로만 응답하세요:
+{{"summary": "2~3문장 한국어 통합 요약"}}"""
+
 CHAPTERS_PROMPT = """다음은 타임스탬프가 붙은 영상 자막입니다. 영상을 5~12개의 의미 단위 챕터로 나누세요.
 각 챕터는 시작 시각(초)과 짧은 제목(라벨)으로 표현합니다. 시간 오름차순, 첫 챕터는 t=0.
 
@@ -298,6 +307,72 @@ class ClaudeProvider(AIProvider):
             result = await self._run_tier3(result, total_cost, models_used)
 
         return result
+
+    async def _merge_partials(
+        self,
+        partials: list[SummaryResult],
+        mode: str,
+    ) -> SummaryResult:
+        """여러 SummaryResult를 1개로 병합. summary는 LLM 통합 호출."""
+        base = partials[0]
+
+        all_paragraphs = [p for prt in partials for p in (prt.paragraphs or [])]
+        all_sections = _renumber_sections(
+            [s for prt in partials for s in (prt.sections or [])]
+        )
+        all_insights: list[str] = []
+        for prt in partials:
+            if prt.insights:
+                all_insights.extend(prt.insights)
+        all_questions: list[str] = []
+        for prt in partials:
+            if prt.questions_raised:
+                all_questions.extend(prt.questions_raised)
+        all_key_points = [k for prt in partials for k in (prt.key_points or [])]
+        all_tags = list({t for prt in partials for t in (prt.tags or [])})
+        total_cost = sum(prt.cost_usd for prt in partials)
+        models_used: list[str] = []
+        for prt in partials:
+            models_used.extend(prt.models_used or [])
+
+        merged_summary = base.summary
+        try:
+            partials_text = "\n\n".join(
+                f"[조각 {i+1}] {prt.summary}" for i, prt in enumerate(partials) if prt.summary
+            )
+            if partials_text:
+                model = config.CLAUDE_MODELS["tier2"]
+                merge_resp = await self._client.messages.create(
+                    model=model,
+                    max_tokens=512,
+                    messages=[{"role": "user", "content": SUMMARY_MERGE_PROMPT.format(partials=partials_text)}],
+                )
+                merge_raw = merge_resp.content[0].text
+                merge_data = _parse_json(merge_raw)
+                merged_summary = merge_data.get("summary", base.summary)
+                total_cost += _calc_cost(model, merge_resp.usage.input_tokens, merge_resp.usage.output_tokens)
+                models_used.append(model)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"summary merge failed, using first partial: {e}")
+
+        return SummaryResult(
+            title=base.title,
+            language=base.language,
+            word_count=sum(prt.word_count for prt in partials),
+            reading_time_min=sum(prt.reading_time_min for prt in partials),
+            sections=all_sections,
+            summary=merged_summary,
+            key_points=all_key_points,
+            tags=all_tags,
+            suggested_topic=base.suggested_topic,
+            summary_mode=mode,
+            insights=all_insights or None,
+            questions_raised=all_questions or None,
+            paragraphs=all_paragraphs,
+            cost_usd=total_cost,
+            models_used=models_used,
+        )
 
     async def generate_chapters(self, transcript: str) -> tuple[list[dict], float, str]:
         model = config.CLAUDE_MODELS["tier2"]

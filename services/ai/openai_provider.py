@@ -1,7 +1,7 @@
 import json
 from openai import AsyncOpenAI
 from services.ai.base import AIProvider, SummaryResult
-from services.ai.claude import TIER2_PROMPT, TIER2_CODE_PROMPT, TIER3_PROMPT, CHAPTERS_PROMPT, DETAILED_PROMPT, TRANSLATE_CHAPTERS_PROMPT, _build_chapters, _build_sections, _build_paragraphs
+from services.ai.claude import TIER2_PROMPT, TIER2_CODE_PROMPT, TIER3_PROMPT, CHAPTERS_PROMPT, DETAILED_PROMPT, TRANSLATE_CHAPTERS_PROMPT, SUMMARY_MERGE_PROMPT, _build_chapters, _build_sections, _build_paragraphs, _renumber_sections
 import config
 
 GPT_PRICING: dict[str, dict[str, float]] = {
@@ -82,6 +82,73 @@ class OpenAIProvider(AIProvider):
             result = await self._gpt_tier3(result, total_cost, models_used)
 
         return result
+
+    async def _merge_partials(
+        self,
+        partials: list[SummaryResult],
+        mode: str,
+    ) -> SummaryResult:
+        """여러 SummaryResult를 1개로 병합. summary는 LLM 통합 호출."""
+        base = partials[0]
+
+        all_paragraphs = [p for prt in partials for p in (prt.paragraphs or [])]
+        all_sections = _renumber_sections(
+            [s for prt in partials for s in (prt.sections or [])]
+        )
+        all_insights: list[str] = []
+        for prt in partials:
+            if prt.insights:
+                all_insights.extend(prt.insights)
+        all_questions: list[str] = []
+        for prt in partials:
+            if prt.questions_raised:
+                all_questions.extend(prt.questions_raised)
+        all_key_points = [k for prt in partials for k in (prt.key_points or [])]
+        all_tags = list({t for prt in partials for t in (prt.tags or [])})
+        total_cost = sum(prt.cost_usd for prt in partials)
+        models_used: list[str] = []
+        for prt in partials:
+            models_used.extend(prt.models_used or [])
+
+        merged_summary = base.summary
+        try:
+            partials_text = "\n\n".join(
+                f"[조각 {i+1}] {prt.summary}" for i, prt in enumerate(partials) if prt.summary
+            )
+            if partials_text:
+                model = config.GPT_MODELS["tier2"]
+                merge_resp = await self._client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": SUMMARY_MERGE_PROMPT.format(partials=partials_text)}],
+                    response_format={"type": "json_object"},
+                )
+                merge_raw = merge_resp.choices[0].message.content
+                if merge_raw:
+                    merge_data = json.loads(merge_raw)
+                    merged_summary = merge_data.get("summary", base.summary)
+                total_cost += _calc_cost(model, merge_resp.usage.prompt_tokens, merge_resp.usage.completion_tokens)
+                models_used.append(model)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"summary merge failed, using first partial: {e}")
+
+        return SummaryResult(
+            title=base.title,
+            language=base.language,
+            word_count=sum(prt.word_count for prt in partials),
+            reading_time_min=sum(prt.reading_time_min for prt in partials),
+            sections=all_sections,
+            summary=merged_summary,
+            key_points=all_key_points,
+            tags=all_tags,
+            suggested_topic=base.suggested_topic,
+            summary_mode=mode,
+            insights=all_insights or None,
+            questions_raised=all_questions or None,
+            paragraphs=all_paragraphs,
+            cost_usd=total_cost,
+            models_used=models_used,
+        )
 
     async def _gpt_tier3(
         self,
