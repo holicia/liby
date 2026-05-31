@@ -10,20 +10,111 @@
 </head>
 <body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100">
 {% from "macros.html" import ref_chips %}
-<div class="p-4">
-  <h1 class="text-lg font-bold">{{ note.title }}</h1>
-  <div id="yt-player" data-video-id="{{ video_id }}" class="aspect-video"></div>
-  <ul class="my-4">
+
+<!-- 헤더 -->
+<header class="border-b border-[#E2E8E4] dark:border-gray-700 px-5 py-3 flex items-center gap-3">
+  <a href="/" class="text-[#1F6F4A] dark:text-[#34A66A] font-bold">📚 liby</a>
+  <span class="text-gray-400 text-sm">/</span>
+  <h1 class="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate flex-1">{{ note.title }}</h1>
+  <a href="{{ note.source_url }}" target="_blank" class="text-xs text-gray-400 hover:text-[#1F6F4A]">원본 영상 ↗</a>
+</header>
+
+<!-- 본문 좌우 분할 -->
+<div class="md:grid md:grid-cols-5 md:gap-4 p-4 max-w-screen-xl mx-auto">
+  <!-- 좌측: 영상 + 트랜스크립트 (sticky) -->
+  <aside class="md:col-span-2 md:sticky md:top-4 md:self-start md:max-h-[calc(100vh-5rem)] md:overflow-y-auto">
+    <div class="aspect-video bg-black rounded-lg overflow-hidden mb-3">
+      <div id="yt-player" data-video-id="{{ video_id }}" class="w-full h-full"></div>
+    </div>
     {% set seg_list = note.transcript_segments if note.transcript_segments is not string else (note.transcript_segments | fromjson) %}
-    {% for s in seg_list %}
-    <li onclick="ytSeek({{ s.t }})" class="cursor-pointer hover:bg-gray-100 px-2 py-1 text-sm">[{{ "%d:%02d"|format(s.t // 60, s.t % 60) }}] {{ s.text }}</li>
+    {% if seg_list %}
+    <h3 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2 mt-4">트랜스크립트</h3>
+    <ul class="space-y-0.5 text-[12px]">
+      {% for s in seg_list %}
+      <li>
+        <button type="button" onclick="ytSeek({{ s.t }})"
+                class="w-full text-left flex gap-2 text-gray-700 dark:text-gray-300 hover:bg-[#EAF4EE] dark:hover:bg-[#14291E] rounded px-2 py-1 transition-colors">
+          <span class="text-[#1F6F4A] dark:text-[#34A66A] font-mono flex-shrink-0">{{ "%d:%02d"|format(s.t // 60, s.t % 60) }}</span>
+          <span>{{ s.text }}</span>
+        </button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-[11px] text-gray-400 mt-4">트랜스크립트 없음</p>
+    {% endif %}
+  </aside>
+
+  <!-- 우측: 본문 + 각주 -->
+  <article class="md:col-span-3">
+    <!-- 요약 -->
+    <section class="mb-6">
+      <h2 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">요약</h2>
+      <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">{{ note.summary }}</p>
+    </section>
+
+    {% set sec_list = note.sections if note.sections is not string else (note.sections | fromjson) %}
+    {% if sec_list %}
+    <!-- detailed: sections.subsections.items -->
+    {% for sec in sec_list %}
+    <section class="mb-6">
+      <h2 class="text-[14px] font-bold text-gray-800 dark:text-gray-100 mb-3">{{ sec.heading }}</h2>
+      {% for sub in sec.get("subsections", []) %}
+      <h3 class="text-[12px] font-semibold text-gray-700 dark:text-gray-200 mb-2 mt-3">{{ sub.heading }}</h3>
+      <div class="space-y-2">
+        {% for it in sub.get("items", []) %}
+        {% if it.text is defined %}
+        {% set effective = it.refs if it.refs else ([{"t": it.t, "snippet": it.quote}] if (it.quote is defined and it.quote and it.t is defined) else []) %}
+        <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">
+          {% if it.text %}{{ it.text }}{% endif %}{{ ref_chips(effective, video_id) }}
+        </p>
+        {% else %}
+        <div class="text-[13px] text-gray-700 dark:text-gray-300">
+          <span class="font-semibold">{{ it.lead }}</span>
+          {% if it.bullets %}
+          <ul class="ml-4 mt-1 list-disc list-inside">{% for b in it.bullets %}<li>{{ b }}</li>{% endfor %}</ul>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </section>
     {% endfor %}
-  </ul>
-  {% set p_list = note.paragraphs if note.paragraphs is not string else (note.paragraphs | fromjson) %}
-  {% for p in p_list %}
-  <p class="my-2">{{ p.text }}{{ ref_chips(p.refs, video_id) }}</p>
-  {% endfor %}
+    {% else %}
+    <!-- quick: paragraphs -->
+    {% set p_list = note.paragraphs if note.paragraphs is not string else (note.paragraphs | fromjson) %}
+    {% if p_list %}
+    <section class="mb-6">
+      <h2 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">본문</h2>
+      <div class="space-y-3">
+        {% for p in p_list %}
+        {% set effective = p.refs if p.refs else ([{"t": p.t, "snippet": p.quote}] if (p.quote is defined and p.quote and p.t is defined) else []) %}
+        <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">
+          {{ p.text }}{{ ref_chips(effective, video_id) }}
+        </p>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+    {% endif %}
+
+    {% if note.insights %}
+    <section class="mb-6">
+      <h2 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">인사이트</h2>
+      <ul class="text-[13px] text-gray-700 dark:text-gray-300 space-y-1 list-disc list-inside">{% for i in note.insights %}<li>{{ i }}</li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+
+    {% if note.questions_raised %}
+    <section class="mb-6">
+      <h2 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">탐구할 질문</h2>
+      <ul class="text-[13px] text-gray-700 dark:text-gray-300 space-y-1 list-disc list-inside">{% for q in note.questions_raised %}<li>{{ q }}</li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+  </article>
 </div>
+
 <script>
 let ytPlayer = null;
 function initYtPlayer() {
