@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Form, Query, Request
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from typing import Optional
 import os
 from pathlib import Path
@@ -61,6 +61,17 @@ async def get_item_detail(request: Request, note_id: int):
         request, "partials/note_detail_modal.html",
         {"note": note, "video_id": video_id},
     )
+
+@router.get("/{note_id}/read")
+async def read_view(request: Request, note_id: int):
+    note = await get_note(config.DB_PATH, note_id)
+    if not note or note.get("type") != "youtube":
+        return RedirectResponse("/", status_code=302)
+    video_id = youtube_video_id(note.get("source_url"))
+    return templates.TemplateResponse(
+        request, "read.html", {"note": note, "video_id": video_id},
+    )
+
 
 @router.delete("/{note_id}")
 async def delete_item(note_id: int):
