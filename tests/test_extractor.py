@@ -102,3 +102,29 @@ def test_build_segments_empty_events_returns_empty():
 
 def test_segments_to_transcript_empty_returns_empty_string():
     assert segments_to_transcript([]) == ""
+
+
+def test_chunk_for_llm_empty_returns_empty_list():
+    from services.extractor import _chunk_for_llm
+    assert _chunk_for_llm("") == []
+    assert _chunk_for_llm("", max_chars=10) == []
+
+
+def test_chunk_for_llm_short_returns_single_chunk():
+    from services.extractor import _chunk_for_llm
+    text = "한 줄짜리 짧은 텍스트."
+    assert _chunk_for_llm(text, max_chars=100) == [text]
+
+
+def test_chunk_for_llm_splits_on_line_boundary():
+    """긴 text는 줄 경계에서 잘리고, 합치면 원본 복원."""
+    from services.extractor import _chunk_for_llm
+    lines = [f"[{i}:00] 라인 {i} 내용입니다." for i in range(5)]
+    text = "\n".join(lines)
+    chunks = _chunk_for_llm(text, max_chars=40)
+    assert len(chunks) >= 2
+    for ch in chunks:
+        # 각 chunk는 한 줄이거나 줄 단위로 묶임
+        assert "\n" in ch or len(ch) <= 50
+    # 합치면 원본
+    assert "\n".join(chunks) == text

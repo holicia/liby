@@ -256,3 +256,25 @@ async def extract_pdf(file_path: str) -> str:
         for page in doc:
             text += page.get_text()
     return text
+
+
+def _chunk_for_llm(text: str, max_chars: int = 12000) -> list[str]:
+    """text를 줄(\n) 단위로 묶어 max_chars 한도 안의 chunk list 반환.
+    빈 text는 []. 한 줄이 max_chars보다 길면 그 줄 단독 chunk(잘리지 않음).
+    합쳐도 개행을 손실 없이 원본 text 복원 가능."""
+    if not text:
+        return []
+    chunks: list[str] = []
+    current: list[str] = []
+    current_len = 0
+    for line in text.split("\n"):
+        line_size = len(line) + 1
+        if current and current_len + line_size > max_chars:
+            chunks.append("\n".join(current))
+            current = []
+            current_len = 0
+        current.append(line)
+        current_len += line_size
+    if current:
+        chunks.append("\n".join(current))
+    return chunks
