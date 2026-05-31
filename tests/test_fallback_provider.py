@@ -12,15 +12,15 @@ async def test_fallback_summarize_wires_paragraphs():
         "title": "T", "language": "ko", "word_count": 100, "reading_time_min": 1,
         "sections": [], "summary": "요약",
         "paragraphs": [
-            {"text": "첫 문단", "quote": "원문 인용"},
-            {"text": "둘째 문단"},
+            {"text": "첫 문단", "refs": []},
+            {"text": "둘째 문단", "refs": []},
         ],
         "tags": ["x"], "suggested_topic": "AI",
     }, ensure_ascii=False)
     with patch("services.ai.fallback._run_cli", return_value=raw):
         res = await provider.summarize("input", "youtube", "quick", [])
     assert res.paragraphs == [
-        {"text": "첫 문단", "quote": "원문 인용"},
-        {"text": "둘째 문단"},
+        {"text": "첫 문단", "refs": []},
+        {"text": "둘째 문단", "refs": []},
     ]
     assert res.summary_mode == "quick"

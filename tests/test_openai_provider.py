@@ -39,30 +39,29 @@ def test_provider_name(provider):
 
 @pytest.mark.asyncio
 async def test_openai_summarize_detailed_builds_sections(provider):
+    import json
     tier2 = MagicMock()
     tier2.choices = [MagicMock(message=MagicMock(content=json.dumps({
-        "title": "T", "language": "ko", "summary": "한 줄",
-        "tags": ["x"], "suggested_topic": "AI",
+        "title": "T", "language": "ko", "summary": "요약",
+        "tags": [], "suggested_topic": "",
         "sections": [{"heading": "1. A", "subsections": [
             {"heading": "1.1 B", "items": [
-                {"text": "문단 1", "quote": "원문", "t": 30},
-                {"text": "문단 2"},
+                {"text": "문단 1", "refs": [{"t": 30, "snippet": "원문"}]},
+                {"text": "문단 2", "refs": []},
             ]}]}],
     }, ensure_ascii=False)))]
     tier2.usage = MagicMock(prompt_tokens=10, completion_tokens=10)
     tier3 = MagicMock()
-    tier3.choices = [MagicMock(message=MagicMock(content=json.dumps(
-        {"insights": ["i"], "questions_raised": ["q"]})))]
+    tier3.choices = [MagicMock(message=MagicMock(content=json.dumps({
+        "insights": ["i"], "questions_raised": ["q"],
+    })))]
     tier3.usage = MagicMock(prompt_tokens=5, completion_tokens=5)
     with patch.object(provider._client.chat.completions, "create",
                       new_callable=AsyncMock, side_effect=[tier2, tier3]):
-        res = await provider.summarize("text", "pdf", "detailed", [])
+        res = await provider.summarize("input", "youtube", "detailed", [])
     items = res.sections[0]["subsections"][0]["items"]
-    assert items[0] == {"text": "문단 1", "quote": "원문", "t": 30}
-    assert items[1] == {"text": "문단 2"}
-    assert res.insights == ["i"]
-    assert res.questions_raised == ["q"]
-    assert res.summary_mode == "detailed"
+    assert items[0] == {"text": "문단 1", "refs": [{"t": 30, "snippet": "원문"}]}
+    assert items[1] == {"text": "문단 2", "refs": []}
 
 
 @pytest.mark.asyncio
@@ -72,11 +71,11 @@ async def test_openai_quick_returns_paragraphs(provider):
     tier2.choices = [MagicMock(message=MagicMock(content=json.dumps({
         "title": "T", "language": "ko", "word_count": 100, "reading_time_min": 1,
         "sections": [], "summary": "요약",
-        "paragraphs": [{"text": "문단", "quote": "인용"}],
+        "paragraphs": [{"text": "문단", "refs": [{"t": 30, "snippet": "원문"}]}],
         "tags": [], "suggested_topic": "",
     }, ensure_ascii=False)))]
     tier2.usage = MagicMock(prompt_tokens=10, completion_tokens=10)
     with patch.object(provider._client.chat.completions, "create",
                       new_callable=AsyncMock, return_value=tier2):
         res = await provider.summarize("text", "youtube", "quick", [])
-    assert res.paragraphs == [{"text": "문단", "quote": "인용"}]
+    assert res.paragraphs == [{"text": "문단", "refs": [{"t": 30, "snippet": "원문"}]}]

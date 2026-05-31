@@ -17,8 +17,8 @@ async def test_summarize_quick_returns_paragraphs(provider):
         "sections": [],
         "summary": "한 줄 요약 2~3문장.",
         "paragraphs": [
-            {"text": "첫 문단", "quote": "원문 인용", "t": 12},
-            {"text": "두 번째 문단"},
+            {"text": "첫 문단", "refs": [{"t": 12, "snippet": "원문 인용"}, {"t": 25, "snippet": "또 다른"}]},
+            {"text": "두 번째 문단", "refs": []},
         ],
         "tags": ["x"], "suggested_topic": "AI/ML",
     }, ensure_ascii=False))]
@@ -27,8 +27,8 @@ async def test_summarize_quick_returns_paragraphs(provider):
         res = await provider.summarize("text", "youtube", "quick", [])
     assert res.summary == "한 줄 요약 2~3문장."
     assert res.paragraphs == [
-        {"text": "첫 문단", "quote": "원문 인용", "t": 12},
-        {"text": "두 번째 문단"},
+        {"text": "첫 문단", "refs": [{"t": 12, "snippet": "원문 인용"}, {"t": 25, "snippet": "또 다른"}]},
+        {"text": "두 번째 문단", "refs": []},
     ]
     assert res.summary_mode == "quick"
 
@@ -129,8 +129,8 @@ async def test_summarize_detailed_builds_sections(provider):
         "tags": ["x"], "suggested_topic": "AI",
         "sections": [{"heading": "1. A", "t": 0, "subsections": [
             {"heading": "1.1 B", "items": [
-                {"text": "문단 1", "quote": "원문", "t": 30},
-                {"text": "문단 2"},
+                {"text": "문단 1", "refs": [{"t": 30, "snippet": "원문"}]},
+                {"text": "문단 2", "refs": []},
             ]}]}],
     }, ensure_ascii=False))]
     tier2.usage = MagicMock(input_tokens=10, output_tokens=10)
@@ -141,8 +141,8 @@ async def test_summarize_detailed_builds_sections(provider):
                       new_callable=AsyncMock, side_effect=[tier2, tier3]):
         res = await provider.summarize("[0:00] hi", "youtube", "detailed", [])
     items = res.sections[0]["subsections"][0]["items"]
-    assert items[0] == {"text": "문단 1", "quote": "원문", "t": 30}
-    assert items[1] == {"text": "문단 2"}
+    assert items[0] == {"text": "문단 1", "refs": [{"t": 30, "snippet": "원문"}]}
+    assert items[1] == {"text": "문단 2", "refs": []}
     assert res.insights == ["i"]
 
 

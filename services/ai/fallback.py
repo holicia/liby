@@ -14,8 +14,8 @@ JSON 형식:
   "reading_time_min": 숫자, "sections": [],
   "summary": "전체를 아우르는 2~3문장 한 줄 요약",
   "paragraphs": [
-    {{"text": "한국어 문단", "quote": "원문에서 발췌한 한 문장"}},
-    {{"text": "다른 문단"}}
+    {{"text": "한국어 문단", "refs": []}},
+    {{"text": "다른 문단", "refs": []}}
   ],
   "tags": ["태그1"],
   "suggested_topic": "주제명"}}"""
