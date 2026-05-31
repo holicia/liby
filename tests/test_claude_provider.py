@@ -217,6 +217,29 @@ def test_build_refs_empty_input():
     assert _build_refs([]) == []
 
 
+@pytest.mark.asyncio
+async def test_merge_partials_sorts_sections_by_t_before_renumber(provider):
+    """chunk별 sections의 t가 역순/뒤죽박죽이어도 _merge_partials가 t 오름차순으로 정렬해 renumber."""
+    from services.ai.base import SummaryResult
+    partials = [
+        SummaryResult(
+            title="T", language="ko", word_count=0, reading_time_min=0,
+            sections=[{"heading": "1. Late", "t": 1860, "subsections": []}],
+            summary="s1", key_points=[], tags=[], suggested_topic="",
+            summary_mode="detailed", paragraphs=[], cost_usd=0.0, models_used=[]),
+        SummaryResult(
+            title="T", language="ko", word_count=0, reading_time_min=0,
+            sections=[{"heading": "1. Early", "t": 300, "subsections": []}],
+            summary="s2", key_points=[], tags=[], suggested_topic="",
+            summary_mode="detailed", paragraphs=[], cost_usd=0.0, models_used=[]),
+    ]
+    with patch.object(provider._client.messages, "create",
+                      new_callable=AsyncMock, side_effect=Exception("skip merge")):
+        result = await provider._merge_partials(partials, "detailed")
+    assert [s["heading"] for s in result.sections] == ["1. Early", "2. Late"]
+    assert [s["t"] for s in result.sections] == [300, 1860]
+
+
 def test_renumber_sections_resets_section_and_subsection_indices():
     """두 chunk의 sections concat 후 1, 2, 3...로 재부여, subsection M.N도 갱신."""
     from services.ai.claude import _renumber_sections

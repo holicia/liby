@@ -333,9 +333,11 @@ class ClaudeProvider(AIProvider):
         base = partials[0]
 
         all_paragraphs = [p for prt in partials for p in (prt.paragraphs or [])]
-        all_sections = _renumber_sections(
-            [s for prt in partials for s in (prt.sections or [])]
-        )
+        # chunk 경계에서 sections가 절대 시각 t로 단조 증가하도록 정렬한 뒤 번호 재부여.
+        # t가 없는 section은 끝으로 밀어둔다.
+        merged_sections = [s for prt in partials for s in (prt.sections or [])]
+        merged_sections.sort(key=lambda s: s.get("t", float("inf")))
+        all_sections = _renumber_sections(merged_sections)
         all_insights: list[str] = []
         for prt in partials:
             if prt.insights:

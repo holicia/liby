@@ -107,9 +107,9 @@ class OpenAIProvider(AIProvider):
         base = partials[0]
 
         all_paragraphs = [p for prt in partials for p in (prt.paragraphs or [])]
-        all_sections = _renumber_sections(
-            [s for prt in partials for s in (prt.sections or [])]
-        )
+        merged_sections = [s for prt in partials for s in (prt.sections or [])]
+        merged_sections.sort(key=lambda s: s.get("t", float("inf")))
+        all_sections = _renumber_sections(merged_sections)
         all_insights: list[str] = []
         for prt in partials:
             if prt.insights:
