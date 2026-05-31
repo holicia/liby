@@ -101,6 +101,30 @@ def _build_refs(refs_raw: list) -> list[dict]:
     return out
 
 
+def _renumber_sections(sections: list[dict]) -> list[dict]:
+    """sections의 heading prefix 'N. ...'를 1부터 재부여하고
+    subsection heading 'M.N ...'의 M도 parent의 새 번호로 갱신.
+    items/refs 등 다른 필드는 그대로."""
+    out = []
+    for new_idx, sec in enumerate(sections, start=1):
+        new_sec = dict(sec)
+        new_sec["heading"] = re.sub(
+            r'^\d+\.\s*', f'{new_idx}. ', sec.get("heading", ""))
+        if "subsections" in sec:
+            new_subs = []
+            for sub in sec["subsections"]:
+                new_sub = dict(sub)
+                new_sub["heading"] = re.sub(
+                    r'^\d+\.(\d+)\s*',
+                    lambda m: f'{new_idx}.{m.group(1)} ',
+                    sub.get("heading", ""),
+                )
+                new_subs.append(new_sub)
+            new_sec["subsections"] = new_subs
+        out.append(new_sec)
+    return out
+
+
 TIER2_PROMPT = """다음 내용을 분석하여 노트를 작성하세요.
 기존 주제 목록: {existing_topics}
 

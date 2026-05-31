@@ -215,3 +215,27 @@ def test_build_refs_skips_invalid():
 def test_build_refs_empty_input():
     from services.ai.claude import _build_refs
     assert _build_refs([]) == []
+
+
+def test_renumber_sections_resets_section_and_subsection_indices():
+    """두 chunk의 sections concat 후 1, 2, 3...로 재부여, subsection M.N도 갱신."""
+    from services.ai.claude import _renumber_sections
+    sections = [
+        {"heading": "1. A", "subsections": [
+            {"heading": "1.1 x", "items": []},
+            {"heading": "1.2 y", "items": []},
+        ]},
+        {"heading": "1. C", "subsections": [
+            {"heading": "1.1 z", "items": []},
+        ]},
+    ]
+    result = _renumber_sections(sections)
+    assert result == [
+        {"heading": "1. A", "subsections": [
+            {"heading": "1.1 x", "items": []},
+            {"heading": "1.2 y", "items": []},
+        ]},
+        {"heading": "2. C", "subsections": [
+            {"heading": "2.1 z", "items": []},
+        ]},
+    ]
