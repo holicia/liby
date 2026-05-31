@@ -54,6 +54,14 @@ async def analyze_youtube(
         t.progress = "타임라인 생성 중..."
         chapters, ch_cost, ch_model = await resolve_chapters(
             data["native_chapters"], data["segments"], ai)
+        # detailed mode: sections heading+t를 타임라인으로 채택해 본문 섹션과 일치시킴.
+        # quick은 그대로 native/AI chapters 사용.
+        if mode == "detailed" and result.sections:
+            chapters = [
+                {"t": int(sec["t"]), "label": sec["heading"]}
+                for sec in result.sections
+                if "t" in sec and sec.get("heading")
+            ]
         if chapters:
             t.progress = "스크린샷 캡처 중..."
             chapters = await capture_chapter_screenshots(

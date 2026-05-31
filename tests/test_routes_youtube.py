@@ -226,3 +226,56 @@ async def test_youtube_pipes_segments_to_save_note():
         task = MagicMock(); task.note_id = None
         await captured["fn"](task)
     assert mock_save.call_args.kwargs["segments"] == segments_payload
+
+
+@pytest.mark.asyncio
+async def test_youtube_detailed_uses_sections_as_timeline():
+    """detailed mode면 resolve_chapters 결과를 무시하고 sections heading+t를 timeline으로."""
+    captured = {}
+    async def fake_enqueue(task, fn): captured["fn"] = fn
+    fake_ai = AsyncMock(); fake_ai.name.return_value = "claude"
+    from services.ai.base import SummaryResult
+    fake_ai.summarize.return_value = SummaryResult(
+        title="T", language="ko", word_count=0, reading_time_min=0,
+        sections=[
+            {"t": 10, "heading": "1. 도입", "subsections": []},
+            {"t": 500, "heading": "2. 본론", "subsections": []},
+            {"t": 1800, "heading": "3. 마무리", "subsections": []},
+        ],
+        summary="s", key_points=[], tags=[], suggested_topic="", summary_mode="detailed",
+        paragraphs=[], cost_usd=0.0, models_used=["m"])
+
+    captured_capture = {"calls": None}
+    async def fake_capture(url, chapters, vault_path, slug):
+        captured_capture["calls"] = chapters
+        return chapters  # image 없이 그대로
+
+    with patch("routers.youtube.enqueue", new=fake_enqueue), \
+         patch("routers.youtube.get_provider", return_value=fake_ai), \
+         patch("routers.youtube.youtube_title", new_callable=AsyncMock, return_value="T"), \
+         patch("routers.youtube.extract_youtube_full", new_callable=AsyncMock,
+               return_value={"text": "x", "video_id": "v",
+                             "native_chapters": [{"t": 0, "label": "Wrong native"}],
+                             "segments": []}), \
+         patch("routers.youtube.save_note", new_callable=AsyncMock, return_value=1) as mock_save, \
+         patch("routers.youtube.record_api_cost", new_callable=AsyncMock), \
+         patch("routers.youtube.resolve_chapters", new_callable=AsyncMock,
+               return_value=([{"t": 0, "label": "Wrong native"}], 0.0, "")), \
+         patch("routers.youtube.capture_chapter_screenshots", new=fake_capture):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            await c.post("/api/youtube", data={"url": "https://youtu.be/abc",
+                                               "provider": "claude", "mode": "detailed"})
+        task = MagicMock(); task.note_id = None
+        await captured["fn"](task)
+    timeline_arg = mock_save.call_args.kwargs["timeline"]
+    assert timeline_arg == [
+        {"t": 10, "label": "1. 도입"},
+        {"t": 500, "label": "2. 본론"},
+        {"t": 1800, "label": "3. 마무리"},
+    ]
+    # capture도 sections 기반 chapter list를 받음
+    assert captured_capture["calls"] == [
+        {"t": 10, "label": "1. 도입"},
+        {"t": 500, "label": "2. 본론"},
+        {"t": 1800, "label": "3. 마무리"},
+    ]
