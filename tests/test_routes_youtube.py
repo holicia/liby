@@ -279,3 +279,47 @@ async def test_youtube_detailed_uses_sections_as_timeline():
         {"t": 500, "label": "2. 본론"},
         {"t": 1800, "label": "3. 마무리"},
     ]
+
+
+@pytest.mark.asyncio
+async def test_youtube_detailed_fallbacks_t_for_sections_missing_t():
+    """detailed sections 중 일부에 t가 없으면 직전 sec t + 30s로 fallback해 timeline에 포함."""
+    captured = {}
+    async def fake_enqueue(task, fn): captured["fn"] = fn
+    fake_ai = AsyncMock(); fake_ai.name.return_value = "claude"
+    from services.ai.base import SummaryResult
+    fake_ai.summarize.return_value = SummaryResult(
+        title="T", language="ko", word_count=0, reading_time_min=0,
+        sections=[
+            {"t": 10, "heading": "1. 도입", "subsections": []},
+            {"t": 500, "heading": "2. 본론", "subsections": []},
+            # t 누락
+            {"heading": "3. 후반 1", "subsections": []},
+            {"heading": "3. 후반 2", "subsections": []},
+        ],
+        summary="s", key_points=[], tags=[], suggested_topic="", summary_mode="detailed",
+        paragraphs=[], cost_usd=0.0, models_used=["m"])
+
+    async def fake_capture(url, chapters, vault_path, slug): return chapters
+
+    with patch("routers.youtube.enqueue", new=fake_enqueue), \
+         patch("routers.youtube.get_provider", return_value=fake_ai), \
+         patch("routers.youtube.youtube_title", new_callable=AsyncMock, return_value="T"), \
+         patch("routers.youtube.extract_youtube_full", new_callable=AsyncMock,
+               return_value={"text": "x", "video_id": "v", "native_chapters": None, "segments": []}), \
+         patch("routers.youtube.save_note", new_callable=AsyncMock, return_value=1) as mock_save, \
+         patch("routers.youtube.record_api_cost", new_callable=AsyncMock), \
+         patch("routers.youtube.resolve_chapters", new_callable=AsyncMock, return_value=([], 0.0, "")), \
+         patch("routers.youtube.capture_chapter_screenshots", new=fake_capture):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            await c.post("/api/youtube", data={"url": "https://youtu.be/abc",
+                                               "provider": "claude", "mode": "detailed"})
+        task = MagicMock(); task.note_id = None
+        await captured["fn"](task)
+    timeline = mock_save.call_args.kwargs["timeline"]
+    # 4개 모두 포함, t는 단조 증가 (fallback = last_t + 30)
+    assert len(timeline) == 4
+    assert timeline[0] == {"t": 10, "label": "1. 도입"}
+    assert timeline[1] == {"t": 500, "label": "2. 본론"}
+    assert timeline[2] == {"t": 530, "label": "3. 후반 1"}
+    assert timeline[3] == {"t": 560, "label": "3. 후반 2"}
