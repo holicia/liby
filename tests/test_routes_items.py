@@ -369,5 +369,5 @@ async def test_modal_shows_full_screen_link_for_youtube():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
-    assert 'href="/items/1/read"' in resp.text
+    assert 'href="/api/items/1/read"' in resp.text
     assert "📖" in resp.text

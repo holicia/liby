@@ -60,9 +60,17 @@ def _make_md_content(
                     if "text" in it:  # 신규: 문단 + 인용 (text 키가 있으면 신규 스키마)
                         if it["text"]:
                             lines.append(it["text"])
-                        if it.get("quote"):
-                            ts = f"[{_ts(it['t'])}] " if "t" in it else ""
-                            lines.append(f'> {ts}"{it["quote"]}"')
+                        # 신규: refs 리스트를 blockquote로 렌더 (옛 quote+t는 단일 ref로 fallback)
+                        effective_refs = it.get("refs") or (
+                            [{"t": it["t"], "snippet": it["quote"]}]
+                            if it.get("quote") and "t" in it else []
+                        )
+                        for r in effective_refs:
+                            snippet = r.get("snippet", "")
+                            if not snippet:
+                                continue
+                            ts = f"[{_ts(r['t'])}] " if "t" in r else ""
+                            lines.append(f'> {ts}"{snippet}"')
                     else:  # 백워드 호환: 옛 {lead, bullets}
                         ts = f" ({_ts(it['t'])})" if "t" in it else ""
                         lines.append(f"- **{it.get('lead','')}**{ts}")
@@ -74,9 +82,16 @@ def _make_md_content(
         lines.append("")
         for p in result.paragraphs:
             lines.append(p["text"])
-            if p.get("quote"):
-                ts = f"[{_ts(p['t'])}] " if "t" in p else ""
-                lines.append(f'> {ts}"{p["quote"]}"')
+            effective_refs = p.get("refs") or (
+                [{"t": p["t"], "snippet": p["quote"]}]
+                if p.get("quote") and "t" in p else []
+            )
+            for r in effective_refs:
+                snippet = r.get("snippet", "")
+                if not snippet:
+                    continue
+                ts = f"[{_ts(r['t'])}] " if "t" in r else ""
+                lines.append(f'> {ts}"{snippet}"')
             lines.append("")
     else:  # 백워드 호환: 옛 quick key_points
         lines.append("## 핵심 포인트")

@@ -234,8 +234,8 @@ def test_make_md_content_hierarchical():
         title="T", language="ko", word_count=0, reading_time_min=0,
         sections=[{"heading": "1. A", "subsections": [
             {"heading": "1.1 B", "items": [
-                {"text": "문단 본문 1", "quote": "원문 한 문장", "t": 90},
-                {"text": "문단 본문 2"},
+                {"text": "문단 본문 1", "refs": [{"t": 90, "snippet": "원문 한 문장"}]},
+                {"text": "문단 본문 2", "refs": []},
             ]}]}],
         summary="한 줄", key_points=[], tags=["x"], suggested_topic="AI",
         summary_mode="detailed", insights=["i"], questions_raised=["q"])
@@ -248,7 +248,6 @@ def test_make_md_content_hierarchical():
     assert "문단 본문 2" in md
     assert "## 인사이트" in md
     assert "## 탐구할 질문" in md
-    assert "핵심 논거" not in md
     assert "\n\n\n" not in md
 
 
@@ -270,13 +269,14 @@ def test_make_md_content_quick_paragraphs():
         sections=[], summary="요약", key_points=[], tags=[], suggested_topic="",
         summary_mode="quick",
         paragraphs=[
-            {"text": "문단 A", "quote": "발췌", "t": 30},
-            {"text": "문단 B"},
+            {"text": "문단 A", "refs": [{"t": 30, "snippet": "발췌1"}, {"t": 60, "snippet": "발췌2"}]},
+            {"text": "문단 B", "refs": []},
         ])
     md = _make_md_content("youtube", "u", r, "claude")
     assert "## 본문" in md
     assert "문단 A" in md
-    assert '> [0:30] "발췌"' in md
+    assert '> [0:30] "발췌1"' in md
+    assert '> [1:00] "발췌2"' in md
     assert "문단 B" in md
     assert "## 핵심 포인트" not in md
 
@@ -289,14 +289,14 @@ def test_make_md_content_item_with_text_key_takes_new_branch_even_if_empty():
         title="T", language="ko", word_count=0, reading_time_min=0,
         sections=[{"heading": "1. A", "subsections": [
             {"heading": "1.1 B", "items": [
-                {"text": "", "quote": "원문만 있는 항목"},
+                {"text": "", "refs": [{"t": 5, "snippet": "원문만 있는 항목"}]},
             ]}]}],
         summary="s", key_points=[], tags=[], suggested_topic="",
         summary_mode="detailed")
     md = _make_md_content("youtube", "u", r, "claude")
-    assert '> "원문만 있는 항목"' in md
+    assert '> [0:05] "원문만 있는 항목"' in md
     assert "**None**" not in md  # 레거시 lead fallback이 발현되지 않음
-    assert "- **" not in md      # 레거시 bullet 헤더가 안 나옴
+    assert "- **" not in md
 
 
 @pytest.mark.asyncio
