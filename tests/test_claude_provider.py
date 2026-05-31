@@ -97,17 +97,17 @@ def test_build_sections_hierarchy_and_timestamps():
     data = {"sections": [
         {"heading": "1. 대주제", "t": "0", "subsections": [
             {"heading": "1.1 소주제", "t": 90, "items": [
-                {"text": "  문단 본문  ", "quote": "  원문 인용  ", "t": 30},
-                {"text": "두 번째 문단"},
-                {"text": "", "quote": "x"},
+                {"text": "  문단 본문  ", "refs": [{"t": 30, "snippet": "원문"}]},
+                {"text": "두 번째"},
+                {"text": "", "refs": [{"t": 5}]},  # text 없음 skip
             ]},
         ]},
     ]}
     assert _build_sections(data) == [
         {"heading": "1. 대주제", "t": 0, "subsections": [
             {"heading": "1.1 소주제", "t": 90, "items": [
-                {"text": "문단 본문", "quote": "원문 인용", "t": 30},
-                {"text": "두 번째 문단"},
+                {"text": "문단 본문", "refs": [{"t": 30, "snippet": "원문"}]},
+                {"text": "두 번째", "refs": []},
             ]},
         ]},
     ]
@@ -169,12 +169,12 @@ async def test_translate_chapters_empty_returns_empty(provider):
 def test_build_paragraphs_keeps_text_quote_and_t():
     from services.ai.claude import _build_paragraphs
     data = {"paragraphs": [
-        {"text": "  문단 1  ", "quote": "  인용  ", "t": "30"},
-        {"text": "문단 2"},
+        {"text": "  문단 1  ", "refs": [{"t": "30", "snippet": "원문"}, {"t": 60}]},
+        {"text": "문단 2"},  # refs 없음
     ]}
     assert _build_paragraphs(data) == [
-        {"text": "문단 1", "quote": "인용", "t": 30},
-        {"text": "문단 2"},
+        {"text": "문단 1", "refs": [{"t": 30, "snippet": "원문"}, {"t": 60}]},
+        {"text": "문단 2", "refs": []},
     ]
 
 
@@ -183,10 +183,10 @@ def test_build_paragraphs_skips_invalid():
     data = {"paragraphs": [
         "notdict",
         {"text": ""},
-        {"quote": "only"},
-        {"text": "ok", "t": "1:30"},
+        {"refs": [{"t": 5}]},  # text 없음 → skip
+        {"text": "ok"},  # refs 없으면 빈 list
     ]}
-    assert _build_paragraphs(data) == [{"text": "ok"}]
+    assert _build_paragraphs(data) == [{"text": "ok", "refs": []}]
 
 
 def test_build_refs_keeps_t_and_snippet():

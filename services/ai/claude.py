@@ -57,14 +57,7 @@ def _build_sections(data: dict) -> list[dict]:
                 text = str(it.get("text", "")).strip()
                 if not text:
                     continue
-                item = {"text": text}
-                quote = str(it.get("quote", "")).strip()
-                if quote:
-                    item["quote"] = quote
-                t = _to_t(it.get("t"))
-                if t is not None:
-                    item["t"] = t
-                items.append(item)
+                items.append({"text": text, "refs": _build_refs(it.get("refs", []))})
             sub_obj = {"heading": sub_heading, "items": items}
             st = _to_t(sub.get("t"))
             if st is not None:
@@ -79,7 +72,7 @@ def _build_sections(data: dict) -> list[dict]:
 
 
 def _build_paragraphs(data: dict) -> list[dict]:
-    """LLM 응답 dict → [{text, quote?, t?}]. text 비면 skip; t는 _to_t 가드."""
+    """LLM 응답 dict → [{text, refs}]. text 비면 skip; refs는 _build_refs 가드."""
     out = []
     for p in data.get("paragraphs", []):
         if not isinstance(p, dict):
@@ -87,14 +80,7 @@ def _build_paragraphs(data: dict) -> list[dict]:
         text = str(p.get("text", "")).strip()
         if not text:
             continue
-        block = {"text": text}
-        quote = str(p.get("quote", "")).strip()
-        if quote:
-            block["quote"] = quote
-        t = _to_t(p.get("t"))
-        if t is not None:
-            block["t"] = t
-        out.append(block)
+        out.append({"text": text, "refs": _build_refs(p.get("refs", []))})
     return out
 
 
