@@ -21,7 +21,7 @@
           {% else %}bg-red-100 text-red-600{% endif %}">{{ status }}</span>
       </div>
       <div>
-        <span class="text-[12px] font-bold text-[#1F2937] dark:text-gray-200">${{ "%.2f"|format(cost) }}</span>
+        <span class="text-[12px] font-bold text-[#1F2937] dark:text-gray-200" title="${{ "%.4f"|format(cost) }}">${{ "%.3f"|format(cost) }}</span>
         <span class="text-[10px] text-gray-400"> / ${{ "%.2f"|format(limit) }}</span>
       </div>
     </div>
