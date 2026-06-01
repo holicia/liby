@@ -61,6 +61,8 @@ async def test_usage_report_renders_with_recent_calls():
     """/api/settings/usage가 누적 카드 + 최근 호출 표를 렌더."""
     async def fake_monthly(db, provider):
         return 0.42 if provider == "claude" else 0.0
+    async def fake_count(db, provider):
+        return 0
     async def fake_rows(db, limit=100):
         return [
             {"recorded_at": "2026-05-31 14:30:00", "provider": "claude",
@@ -68,10 +70,13 @@ async def test_usage_report_renders_with_recent_calls():
              "item_id": 56, "note_title": "샘플 노트", "note_type": "youtube"},
         ]
     async def fake_daily(db, days=30):
-        return [{"date": "2026-05-01", "claude": 0.0, "gpt": 0.0, "total": 0.0}]
+        return [{"date": "2026-05-01", "claude": 0.0, "gpt": 0.0,
+                 "claude_cli": 0.0, "codex_cli": 0.0, "total": 0.0}]
     async def fake_monthly_agg(db, months=12):
-        return [{"month": "2026-05", "claude": 0.0, "gpt": 0.0, "total": 0.0}]
+        return [{"month": "2026-05", "claude": 0.0, "gpt": 0.0,
+                 "claude_cli": 0.0, "codex_cli": 0.0, "total": 0.0}]
     with patch("services.storage.get_monthly_cost", new=fake_monthly), \
+         patch("services.storage.get_monthly_call_count", new=fake_count), \
          patch("services.storage.list_recent_api_costs", new=fake_rows), \
          patch("services.storage.aggregate_daily_costs", new=fake_daily), \
          patch("services.storage.aggregate_monthly_costs", new=fake_monthly_agg):
@@ -91,19 +96,24 @@ async def test_usage_report_renders_daily_and_monthly_charts():
     """/api/settings/usage가 일별/월별 차트 섹션을 렌더하고 다크모드 클래스 포함."""
     async def fake_monthly(db, provider):
         return 0.0
+    async def fake_count(db, provider):
+        return 0
     async def fake_rows(db, limit=100):
         return []
     async def fake_daily(db, days=30):
         return [
-            {"date": f"2026-05-{i:02d}", "claude": 0.0, "gpt": 0.0, "total": 0.0}
+            {"date": f"2026-05-{i:02d}", "claude": 0.0, "gpt": 0.0,
+             "claude_cli": 0.0, "codex_cli": 0.0, "total": 0.0}
             for i in range(1, 31)
         ]
     async def fake_monthly_agg(db, months=12):
         return [
-            {"month": f"2025-{i:02d}", "claude": 0.0, "gpt": 0.0, "total": 0.0}
+            {"month": f"2025-{i:02d}", "claude": 0.0, "gpt": 0.0,
+             "claude_cli": 0.0, "codex_cli": 0.0, "total": 0.0}
             for i in range(1, 13)
         ]
     with patch("services.storage.get_monthly_cost", new=fake_monthly), \
+         patch("services.storage.get_monthly_call_count", new=fake_count), \
          patch("services.storage.list_recent_api_costs", new=fake_rows), \
          patch("services.storage.aggregate_daily_costs", new=fake_daily), \
          patch("services.storage.aggregate_monthly_costs", new=fake_monthly_agg):
@@ -118,6 +128,36 @@ async def test_usage_report_renders_daily_and_monthly_charts():
     # 스택 색상
     assert "#8B5CF6" in resp.text
     assert "#22C55E" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_usage_report_renders_four_provider_stacks():
+    """/api/settings/usage가 4 provider 색상 모두 마크업에 포함."""
+    async def fake_monthly_cost(db, provider): return 0.0
+    async def fake_count(db, provider): return 5
+    async def fake_rows(db, limit=100): return []
+    async def fake_daily(db, days=30):
+        return [{"date": "2026-06-01",
+                 "claude": 0.0, "gpt": 0.0,
+                 "claude_cli": 0.0, "codex_cli": 0.0, "total": 0.0}]
+    async def fake_month(db, months=12):
+        return [{"month": "2026-06",
+                 "claude": 0.0, "gpt": 0.0,
+                 "claude_cli": 0.0, "codex_cli": 0.0, "total": 0.0}]
+    with patch("services.storage.get_monthly_cost", new=fake_monthly_cost), \
+         patch("services.storage.get_monthly_call_count", new=fake_count), \
+         patch("services.storage.list_recent_api_costs", new=fake_rows), \
+         patch("services.storage.aggregate_daily_costs", new=fake_daily), \
+         patch("services.storage.aggregate_monthly_costs", new=fake_month):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/settings/usage")
+    assert resp.status_code == 200
+    assert "#8B5CF6" in resp.text  # claude
+    assert "#22C55E" in resp.text  # gpt
+    assert "#3B82F6" in resp.text  # claude-cli
+    assert "#F97316" in resp.text  # codex-cli
+    assert "Claude CLI" in resp.text
+    assert "Codex CLI" in resp.text
 
 
 @pytest.mark.asyncio

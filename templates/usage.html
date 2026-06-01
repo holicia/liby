@@ -56,6 +56,28 @@
     {% endfor %}
   </section>
 
+  <!-- CLI 누적 (구독, 비용 0) -->
+  <section class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    {% for name, count, color in [
+      ("Claude CLI", claude_cli_count, "#3B82F6"),
+      ("Codex CLI",  codex_cli_count,  "#F97316")
+    ] %}
+    <div class="border border-[#E2E8E4] dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full" style="background:{{ color }}"></span>
+          <span class="text-sm font-semibold dark:text-gray-100">{{ name }}</span>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A]">구독</span>
+        </div>
+        <div>
+          <span class="text-base font-bold dark:text-gray-100">{{ count }}회</span>
+          <span class="text-xs text-gray-400">/ 이번 달</span>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+
   <!-- 일별 차트 -->
   <section>
     <h2 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">최근 30일 (일별)</h2>
@@ -64,14 +86,14 @@
         {% for d in daily %}
         {% set claude_h = (d.claude / (daily_max or 1) * 100) | round(2) %}
         {% set gpt_h = (d.gpt / (daily_max or 1) * 100) | round(2) %}
+        {% set claude_cli_h = (d.claude_cli / (daily_max or 1) * 100) | round(2) %}
+        {% set codex_cli_h = (d.codex_cli / (daily_max or 1) * 100) | round(2) %}
         <div class="flex-1 flex flex-col-reverse min-w-[6px] rounded-t overflow-hidden bg-gray-100 dark:bg-gray-700/40 group relative"
-             title="{{ d.date }} · Claude ${{ '%.4f'|format(d.claude) }} · GPT ${{ '%.4f'|format(d.gpt) }} · 합계 ${{ '%.4f'|format(d.total) }}">
-          {% if d.claude > 0 %}
-          <div style="height: {{ claude_h }}%; background: #8B5CF6;"></div>
-          {% endif %}
-          {% if d.gpt > 0 %}
-          <div style="height: {{ gpt_h }}%; background: #22C55E;"></div>
-          {% endif %}
+             title="{{ d.date }} · Claude ${{ '%.4f'|format(d.claude) }} · GPT ${{ '%.4f'|format(d.gpt) }} · Claude CLI ${{ '%.4f'|format(d.claude_cli) }} · Codex CLI ${{ '%.4f'|format(d.codex_cli) }} · 합계 ${{ '%.4f'|format(d.total) }}">
+          {% if d.claude > 0 %}<div style="height: {{ claude_h }}%; background: #8B5CF6;"></div>{% endif %}
+          {% if d.gpt > 0 %}<div style="height: {{ gpt_h }}%; background: #22C55E;"></div>{% endif %}
+          {% if d.claude_cli > 0 %}<div style="height: {{ claude_cli_h }}%; background: #3B82F6;"></div>{% endif %}
+          {% if d.codex_cli > 0 %}<div style="height: {{ codex_cli_h }}%; background: #F97316;"></div>{% endif %}
         </div>
         {% endfor %}
       </div>
@@ -91,15 +113,15 @@
         {% for m in monthly %}
         {% set claude_h = (m.claude / (monthly_max or 1) * 100) | round(2) %}
         {% set gpt_h = (m.gpt / (monthly_max or 1) * 100) | round(2) %}
+        {% set claude_cli_h = (m.claude_cli / (monthly_max or 1) * 100) | round(2) %}
+        {% set codex_cli_h = (m.codex_cli / (monthly_max or 1) * 100) | round(2) %}
         <div class="flex-1 flex flex-col items-center">
           <div class="w-full flex-1 flex flex-col-reverse rounded-t overflow-hidden bg-gray-100 dark:bg-gray-700/40"
-               title="{{ m.month }} · Claude ${{ '%.4f'|format(m.claude) }} · GPT ${{ '%.4f'|format(m.gpt) }} · 합계 ${{ '%.4f'|format(m.total) }}">
-            {% if m.claude > 0 %}
-            <div style="height: {{ claude_h }}%; background: #8B5CF6;"></div>
-            {% endif %}
-            {% if m.gpt > 0 %}
-            <div style="height: {{ gpt_h }}%; background: #22C55E;"></div>
-            {% endif %}
+               title="{{ m.month }} · Claude ${{ '%.4f'|format(m.claude) }} · GPT ${{ '%.4f'|format(m.gpt) }} · Claude CLI ${{ '%.4f'|format(m.claude_cli) }} · Codex CLI ${{ '%.4f'|format(m.codex_cli) }} · 합계 ${{ '%.4f'|format(m.total) }}">
+            {% if m.claude > 0 %}<div style="height: {{ claude_h }}%; background: #8B5CF6;"></div>{% endif %}
+            {% if m.gpt > 0 %}<div style="height: {{ gpt_h }}%; background: #22C55E;"></div>{% endif %}
+            {% if m.claude_cli > 0 %}<div style="height: {{ claude_cli_h }}%; background: #3B82F6;"></div>{% endif %}
+            {% if m.codex_cli > 0 %}<div style="height: {{ codex_cli_h }}%; background: #F97316;"></div>{% endif %}
           </div>
           <span class="text-[9px] text-gray-400 mt-1 font-mono">{{ m.month[-2:] }}</span>
         </div>
@@ -113,9 +135,11 @@
   </section>
 
   <!-- 범례 -->
-  <div class="flex items-center gap-4 text-[11px] text-gray-600 dark:text-gray-300">
-    <div class="flex items-center gap-1"><span class="w-3 h-3 rounded" style="background:#8B5CF6"></span> Claude</div>
-    <div class="flex items-center gap-1"><span class="w-3 h-3 rounded" style="background:#22C55E"></span> GPT</div>
+  <div class="flex items-center gap-4 text-[11px] text-gray-600 dark:text-gray-300 flex-wrap">
+    <div class="flex items-center gap-1"><span class="w-3 h-3 rounded" style="background:#8B5CF6"></span> Claude API</div>
+    <div class="flex items-center gap-1"><span class="w-3 h-3 rounded" style="background:#22C55E"></span> GPT API</div>
+    <div class="flex items-center gap-1"><span class="w-3 h-3 rounded" style="background:#3B82F6"></span> Claude CLI</div>
+    <div class="flex items-center gap-1"><span class="w-3 h-3 rounded" style="background:#F97316"></span> Codex CLI</div>
   </div>
 
   <!-- 최근 호출 표 -->
