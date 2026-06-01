@@ -48,7 +48,7 @@
   </div>
 
   <div class="pt-2 border-t border-[#E2E8E4] space-y-1 dark:border-gray-700">
-    {% for num, label, active in [(1,"Anthropic / OpenAI API",True),(2,"Claude Code CLI",False),(3,"Codex CLI",False)] %}
+    {% for num, label, active in [(1,"Claude Code CLI",True),(2,"Codex CLI",True),(3,"Anthropic / OpenAI API",False)] %}
     <div class="flex items-center gap-1.5 text-[10px] text-gray-400">
       <span class="w-3.5 h-3.5 rounded-full border flex items-center justify-center text-[8px] font-bold
         {% if active %}bg-[#1F6F4A] text-white border-[#1F6F4A]{% else %}border-gray-300 text-gray-400{% endif %}">{{ num }}</span>

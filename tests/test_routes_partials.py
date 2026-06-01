@@ -174,8 +174,10 @@ async def test_cost_widget_shows_cli_call_counts():
     assert resp.status_code == 200
     assert "Claude CLI" in resp.text
     assert "Codex CLI" in resp.text
-    assert "12" in resp.text
-    assert "3" in resp.text
+    # 단순 "12"/"3"는 Tailwind 클래스(text-[10px], gap-3...)와 색상 hex에도 포함됨.
+    # 템플릿의 `{{ count }}회` 패턴을 정확히 매칭.
+    assert ">12회<" in resp.text
+    assert ">3회<" in resp.text
 
 
 @pytest.mark.asyncio

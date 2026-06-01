@@ -195,11 +195,14 @@ async def record_api_cost(
         await db.commit()
 
 async def get_monthly_cost(db_path: str, provider: str) -> float:
+    """이번 달(KST 기준) provider 누적 비용. aggregate_*_costs · get_monthly_call_count와
+    동일한 +9시간 변환을 사용해 사이드바 위젯에서 같은 달 경계를 공유."""
     async with aiosqlite.connect(db_path) as db:
         cursor = await db.execute(
             """SELECT COALESCE(SUM(cost_usd), 0) FROM api_costs
                WHERE provider = ?
-               AND strftime('%Y-%m', recorded_at) = strftime('%Y-%m', 'now')""",
+               AND strftime('%Y-%m', recorded_at, '+9 hours') =
+                   strftime('%Y-%m', 'now', '+9 hours')""",
             (provider,),
         )
         row = await cursor.fetchone()
