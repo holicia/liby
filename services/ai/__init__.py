@@ -2,6 +2,7 @@ import config
 from services.ai.claude import ClaudeProvider
 from services.ai.openai_provider import OpenAIProvider
 from services.ai.fallback import FallbackProvider
+from services.ai.bridge import BridgeProvider
 from services.ai.base import AIProvider
 
 def get_provider(name: str | None = None) -> AIProvider:
@@ -10,4 +11,8 @@ def get_provider(name: str | None = None) -> AIProvider:
         return ClaudeProvider()
     if provider_name == "gpt":
         return OpenAIProvider()
+    if provider_name == "claude-cli":
+        return BridgeProvider(adapter="claude")
+    if provider_name == "codex-cli":
+        return BridgeProvider(adapter="codex")
     return FallbackProvider()
