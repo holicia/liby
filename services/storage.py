@@ -225,7 +225,8 @@ async def get_monthly_call_count(db_path: str, provider: str) -> int:
 
 async def aggregate_daily_costs(db_path: str, days: int = 30) -> list[dict]:
     """최근 N일 일별 provider별 cost. KST 기준(SQLite '+9 hours').
-    반환: [{date: 'YYYY-MM-DD', claude: float, gpt: float, total: float}, ...]
+    반환: [{date, claude, gpt, claude_cli, codex_cli, total}, ...]
+    (DB는 'claude-cli'/'codex-cli' 하이픈, 출력 dict는 'claude_cli'/'codex_cli' 언더스코어.)
     오늘로부터 days-1일 전까지. 비어 있는 날도 0으로 채워서 N개 반환."""
     async with aiosqlite.connect(db_path) as db:
         cursor = await db.execute(
@@ -262,7 +263,7 @@ async def aggregate_daily_costs(db_path: str, days: int = 30) -> list[dict]:
 
 async def aggregate_monthly_costs(db_path: str, months: int = 12) -> list[dict]:
     """최근 N개월 월별 provider별 cost. KST 기준.
-    반환: [{month: 'YYYY-MM', claude, gpt, total}, ...] 빈 달도 0으로 채움."""
+    반환: [{month, claude, gpt, claude_cli, codex_cli, total}, ...] 빈 달도 0으로 채움."""
     async with aiosqlite.connect(db_path) as db:
         cursor = await db.execute(
             """SELECT strftime('%Y-%m', recorded_at, '+9 hours') AS month,

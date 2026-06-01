@@ -94,7 +94,7 @@ async def backfill_timeline(request: Request, note_id: int):
         provider = get_provider(note.get("ai_provider", config.DEFAULT_AI_PROVIDER))
         chapters, cost, model = await resolve_chapters(data["native_chapters"], data["segments"], provider)
         await set_timeline(config.DB_PATH, note_id, chapters)
-        if cost > 0:
+        if model:  # AI 호출 발생 시 기록(native chapters는 model=""). CLI는 cost=0이라도 카운트.
             await record_api_cost(config.DB_PATH, provider.name(), model, 0, 0, cost, note_id)
     except Exception:
         # 자막 없음/네트워크 오류 등은 500 대신 모달을 그대로 재렌더(타임라인 없이)
@@ -162,7 +162,7 @@ async def upgrade_note(request: Request, note_id: int):
                 chapters, cost, model = await resolve_chapters(
                     data["native_chapters"], data["segments"], provider)
                 await set_timeline(config.DB_PATH, note_id, chapters)
-                if cost > 0:
+                if model:  # AI 호출 발생 시 기록. CLI는 cost=0이라도 카운트.
                     await record_api_cost(config.DB_PATH, provider.name(), model, 0, 0, cost, note_id)
             except Exception:
                 pass

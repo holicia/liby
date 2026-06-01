@@ -189,3 +189,44 @@ async def test_run_agent_polling_exhaustion_raises_timeout(monkeypatch):
     with pytest.raises(BridgeError) as exc:
         await bc.run_agent("hi", adapter="claude", timeout_sec=1)
     assert exc.value.status == "polling_timeout"
+
+
+@pytest.mark.asyncio
+async def test_run_agent_connect_error_wraps_to_bridge_error(monkeypatch):
+    """bridge 컨테이너 down → ConnectError → BridgeError('connect_error') with Korean msg."""
+    import config
+    monkeypatch.setattr(config, "BRIDGE_TOKEN", "t")
+    monkeypatch.setattr(config, "BRIDGE_BASE_URL", "http://bridge.test")
+
+    def handler(req):
+        raise httpx.ConnectError("Connection refused")
+
+    import services.ai.bridge_client as bc
+    orig = bc.httpx.AsyncClient
+    monkeypatch.setattr(bc.httpx, "AsyncClient",
+        lambda **kw: orig(transport=httpx.MockTransport(handler), **kw))
+    with pytest.raises(BridgeError) as exc:
+        await bc.run_agent("hi", adapter="claude")
+    assert exc.value.status == "connect_error"
+    assert "연결 실패" in exc.value.summary
+    assert exc.value.__cause__ is not None  # raise...from으로 원본 보존
+
+
+@pytest.mark.asyncio
+async def test_run_agent_http_timeout_wraps_to_bridge_error(monkeypatch):
+    """30s HTTP 타임아웃 → BridgeError('http_timeout')."""
+    import config
+    monkeypatch.setattr(config, "BRIDGE_TOKEN", "t")
+    monkeypatch.setattr(config, "BRIDGE_BASE_URL", "http://bridge.test")
+
+    def handler(req):
+        raise httpx.ConnectTimeout("slow network")
+
+    import services.ai.bridge_client as bc
+    orig = bc.httpx.AsyncClient
+    monkeypatch.setattr(bc.httpx, "AsyncClient",
+        lambda **kw: orig(transport=httpx.MockTransport(handler), **kw))
+    with pytest.raises(BridgeError) as exc:
+        await bc.run_agent("hi", adapter="claude")
+    assert exc.value.status == "http_timeout"
+    assert "타임아웃" in exc.value.summary

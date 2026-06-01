@@ -72,7 +72,12 @@ class BridgeProvider(AIProvider):
             prompt, adapter=self._adapter, cwd=config.BRIDGE_CWD,
             timeout_sec=config.BRIDGE_TIMEOUT_SEC,
         )
-        data = chunking.extract_json(run.summary)
+        try:
+            data = chunking.extract_json(run.summary)
+        except (ValueError, json.JSONDecodeError) as e:
+            raise ValueError(
+                f"LLM 응답 JSON 파싱 실패: {run.summary[:200]}"
+            ) from e
         return SummaryResult(
             title=data.get("title", "제목 없음"),
             language=data.get("language", "ko"),

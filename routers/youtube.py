@@ -84,7 +84,9 @@ async def analyze_youtube(
             input_tokens=0, output_tokens=0, cost_usd=result.cost_usd,
             item_id=note_id,
         )
-        if ch_cost > 0:
+        # AI 호출이 실제로 발생한 경우 record (model이 채워짐). native chapters 그대로
+        # 쓴 경우엔 model=""이라 skip. cost>0 가드는 CLI(cost=0)를 누락시키므로 사용 안 함.
+        if ch_model:
             await record_api_cost(
                 config.DB_PATH, ai.name(), model=ch_model,
                 input_tokens=0, output_tokens=0, cost_usd=ch_cost, item_id=note_id,
