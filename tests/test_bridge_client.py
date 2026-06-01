@@ -113,3 +113,79 @@ async def test_run_agent_missing_token_raises():
             await run_agent("hi", adapter="claude")
     finally:
         c.BRIDGE_TOKEN = saved
+
+
+@pytest.mark.asyncio
+async def test_run_agent_401_unauthorized(monkeypatch):
+    import config
+    monkeypatch.setattr(config, "BRIDGE_TOKEN", "wrong")
+    monkeypatch.setattr(config, "BRIDGE_BASE_URL", "http://bridge.test")
+    def handler(req): return httpx.Response(401, text="bad token")
+    import services.ai.bridge_client as bc
+    orig = bc.httpx.AsyncClient
+    monkeypatch.setattr(bc.httpx, "AsyncClient",
+        lambda **kw: orig(transport=httpx.MockTransport(handler), **kw))
+    with pytest.raises(BridgeError) as exc:
+        await bc.run_agent("hi", adapter="claude")
+    assert exc.value.status == "unauthorized"
+
+
+@pytest.mark.asyncio
+async def test_run_agent_cancelled_status_raises(monkeypatch):
+    import config
+    monkeypatch.setattr(config, "BRIDGE_TOKEN", "t")
+    monkeypatch.setattr(config, "BRIDGE_BASE_URL", "http://bridge.test")
+    def handler(req):
+        if req.method == "POST":
+            return httpx.Response(202, json={"id": "r", "status": "queued"})
+        return httpx.Response(200, json={"id": "r", "status": "cancelled",
+                                          "exitCode": None, "summary": "user cancelled"})
+    import services.ai.bridge_client as bc
+    monkeypatch.setattr(bc, "_POLL_INTERVAL_SEC", 0.01, raising=False)
+    orig = bc.httpx.AsyncClient
+    monkeypatch.setattr(bc.httpx, "AsyncClient",
+        lambda **kw: orig(transport=httpx.MockTransport(handler), **kw))
+    with pytest.raises(BridgeError) as exc:
+        await bc.run_agent("hi", adapter="claude")
+    assert exc.value.status == "cancelled"
+
+
+@pytest.mark.asyncio
+async def test_run_agent_timed_out_status_raises(monkeypatch):
+    import config
+    monkeypatch.setattr(config, "BRIDGE_TOKEN", "t")
+    monkeypatch.setattr(config, "BRIDGE_BASE_URL", "http://bridge.test")
+    def handler(req):
+        if req.method == "POST":
+            return httpx.Response(202, json={"id": "r", "status": "queued"})
+        return httpx.Response(200, json={"id": "r", "status": "timed_out",
+                                          "exitCode": 124, "summary": "cli timeout"})
+    import services.ai.bridge_client as bc
+    monkeypatch.setattr(bc, "_POLL_INTERVAL_SEC", 0.01, raising=False)
+    orig = bc.httpx.AsyncClient
+    monkeypatch.setattr(bc.httpx, "AsyncClient",
+        lambda **kw: orig(transport=httpx.MockTransport(handler), **kw))
+    with pytest.raises(BridgeError) as exc:
+        await bc.run_agent("hi", adapter="claude")
+    assert exc.value.status == "timed_out"
+    assert exc.value.exit_code == 124
+
+
+@pytest.mark.asyncio
+async def test_run_agent_polling_exhaustion_raises_timeout(monkeypatch):
+    import config
+    monkeypatch.setattr(config, "BRIDGE_TOKEN", "t")
+    monkeypatch.setattr(config, "BRIDGE_BASE_URL", "http://bridge.test")
+    def handler(req):
+        if req.method == "POST":
+            return httpx.Response(202, json={"id": "r", "status": "queued"})
+        return httpx.Response(200, json={"id": "r", "status": "running"})  # never terminal
+    import services.ai.bridge_client as bc
+    monkeypatch.setattr(bc, "_POLL_INTERVAL_SEC", 0.001, raising=False)
+    orig = bc.httpx.AsyncClient
+    monkeypatch.setattr(bc.httpx, "AsyncClient",
+        lambda **kw: orig(transport=httpx.MockTransport(handler), **kw))
+    # timeout_sec=1 keeps the test fast (loops are 1/0.001 + 5 = ~1005 iterations of MockTransport)
+    with pytest.raises(BridgeError) as exc:
+        await bc.run_agent("hi", adapter="claude", timeout_sec=1)
+    assert exc.value.status == "polling_timeout"

@@ -157,10 +157,15 @@ class BridgeProvider(AIProvider):
                 prompt, adapter=self._adapter, cwd=config.BRIDGE_CWD,
                 timeout_sec=config.BRIDGE_TIMEOUT_SEC,
             )
-            chapters = chunking.build_chapters(chunking.extract_json(run.summary))
-            return chapters, run.usage.total_cost_usd, self._adapter
-        except Exception:
+        except bridge_client.BridgeError as e:
+            import logging
+            logging.getLogger(__name__).warning(f"generate_chapters bridge call failed: {e}")
             return [], 0.0, self._adapter
+        try:
+            chapters = chunking.build_chapters(chunking.extract_json(run.summary))
+        except (ValueError, KeyError, TypeError, json.JSONDecodeError):
+            return [], run.usage.total_cost_usd, self._adapter
+        return chapters, run.usage.total_cost_usd, self._adapter
 
     async def translate_chapters(self, chapters: list[dict]) -> tuple[list[dict], float, str]:
         if not chapters:
@@ -172,7 +177,12 @@ class BridgeProvider(AIProvider):
                 prompt, adapter=self._adapter, cwd=config.BRIDGE_CWD,
                 timeout_sec=config.BRIDGE_TIMEOUT_SEC,
             )
-            translated = chunking.build_chapters(chunking.extract_json(run.summary))
-            return (translated or chapters), run.usage.total_cost_usd, self._adapter
-        except Exception:
+        except bridge_client.BridgeError as e:
+            import logging
+            logging.getLogger(__name__).warning(f"translate_chapters bridge call failed: {e}")
             return chapters, 0.0, self._adapter
+        try:
+            translated = chunking.build_chapters(chunking.extract_json(run.summary))
+        except (ValueError, KeyError, TypeError, json.JSONDecodeError):
+            return chapters, run.usage.total_cost_usd, self._adapter
+        return (translated or chapters), run.usage.total_cost_usd, self._adapter
