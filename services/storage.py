@@ -206,6 +206,20 @@ async def get_monthly_cost(db_path: str, provider: str) -> float:
         return row[0] if row else 0.0
 
 
+async def get_monthly_call_count(db_path: str, provider: str) -> int:
+    """이번 달(KST 기준) provider의 API 호출 건수."""
+    async with aiosqlite.connect(db_path) as db:
+        cursor = await db.execute(
+            """SELECT COUNT(*) FROM api_costs
+               WHERE strftime('%Y-%m', recorded_at, '+9 hours') =
+                     strftime('%Y-%m', 'now', '+9 hours')
+                 AND provider = ?""",
+            (provider,),
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else 0
+
+
 async def aggregate_daily_costs(db_path: str, days: int = 30) -> list[dict]:
     """최근 N일 일별 provider별 cost. KST 기준(SQLite '+9 hours').
     반환: [{date: 'YYYY-MM-DD', claude: float, gpt: float, total: float}, ...]

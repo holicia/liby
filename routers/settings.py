@@ -13,9 +13,11 @@ UTC = ZoneInfo("UTC")
 
 @router.get("/cost")
 async def get_cost_widget(request: Request):
-    from services.storage import get_monthly_cost
+    from services.storage import get_monthly_cost, get_monthly_call_count
     claude_cost = await get_monthly_cost(config.DB_PATH, "claude")
     gpt_cost = await get_monthly_cost(config.DB_PATH, "gpt")
+    claude_cli_count = await get_monthly_call_count(config.DB_PATH, "claude-cli")
+    codex_cli_count = await get_monthly_call_count(config.DB_PATH, "codex-cli")
     return templates.TemplateResponse(
         request, "partials/api_cost.html",
         {
@@ -23,6 +25,8 @@ async def get_cost_widget(request: Request):
             "claude_limit": config.CLAUDE_MONTHLY_LIMIT_USD,
             "gpt_cost": gpt_cost,
             "gpt_limit": config.GPT_MONTHLY_LIMIT_USD,
+            "claude_cli_count": claude_cli_count,
+            "codex_cli_count": codex_cli_count,
         },
     )
 

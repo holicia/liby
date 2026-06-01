@@ -121,6 +121,24 @@ async def test_usage_report_renders_daily_and_monthly_charts():
 
 
 @pytest.mark.asyncio
+async def test_cost_widget_shows_cli_call_counts():
+    """사이드바 위젯이 Claude CLI / Codex CLI 호출 횟수를 표시한다."""
+    async def fake_monthly(db, provider):
+        return {"claude": 0.0, "gpt": 0.0}.get(provider, 0.0)
+    async def fake_count(db, provider):
+        return {"claude-cli": 12, "codex-cli": 3}.get(provider, 0)
+    with patch("services.storage.get_monthly_cost", new=fake_monthly), \
+         patch("services.storage.get_monthly_call_count", new=fake_count):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/settings/cost")
+    assert resp.status_code == 200
+    assert "Claude CLI" in resp.text
+    assert "Codex CLI" in resp.text
+    assert "12" in resp.text
+    assert "3" in resp.text
+
+
+@pytest.mark.asyncio
 async def test_index_input_forms_offer_cli_providers():
     """5 input partial들이 claude-cli/codex-cli 옵션을 모두 노출해야 한다."""
     tabs = ["youtube", "pdf", "text", "code", "markdown"]

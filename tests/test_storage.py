@@ -516,3 +516,17 @@ async def test_aggregate_monthly_costs_includes_cli_buckets(db):
     assert last["claude_cli"] == pytest.approx(0.20)
     assert last["codex_cli"] == pytest.approx(0.0)
     assert last["total"] == pytest.approx(0.20)
+
+
+@pytest.mark.asyncio
+async def test_get_monthly_call_count_counts_only_current_month_and_provider(db):
+    from services.storage import get_monthly_call_count
+    await record_api_cost(db, provider="claude-cli", model="claude",
+                          input_tokens=10, output_tokens=10, cost_usd=0.0)
+    await record_api_cost(db, provider="claude-cli", model="claude",
+                          input_tokens=10, output_tokens=10, cost_usd=0.0)
+    await record_api_cost(db, provider="codex-cli", model="codex",
+                          input_tokens=10, output_tokens=10, cost_usd=0.0)
+    assert await get_monthly_call_count(db, "claude-cli") == 2
+    assert await get_monthly_call_count(db, "codex-cli") == 1
+    assert await get_monthly_call_count(db, "claude") == 0

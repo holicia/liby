@@ -31,6 +31,22 @@
   </div>
   {% endfor %}
 
+  <div class="space-y-1 mb-2 pt-2 border-t border-[#E2E8E4] dark:border-gray-700">
+    {% for name, count, color in [
+      ("Claude CLI", claude_cli_count, "#3B82F6"),
+      ("Codex CLI",  codex_cli_count,  "#F97316")
+    ] %}
+    <div class="flex justify-between items-center text-[11px]">
+      <div class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full" style="background:{{ color }}"></span>
+        <span class="font-semibold text-[#1F2937] dark:text-gray-200">{{ name }}</span>
+        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A]">구독</span>
+      </div>
+      <span class="text-[12px] font-bold text-[#1F2937] dark:text-gray-200">{{ count }}회</span>
+    </div>
+    {% endfor %}
+  </div>
+
   <div class="pt-2 border-t border-[#E2E8E4] space-y-1 dark:border-gray-700">
     {% for num, label, active in [(1,"Anthropic / OpenAI API",True),(2,"Claude Code CLI",False),(3,"Codex CLI",False)] %}
     <div class="flex items-center gap-1.5 text-[10px] text-gray-400">
