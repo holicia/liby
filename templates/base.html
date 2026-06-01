@@ -6,6 +6,17 @@
 <title>{% block title %}liby{% endblock %}</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config = { darkMode: 'class' }</script>
+<script>
+  // FOUC 방지: 저장된 테마를 head에서 즉시 적용
+  (function () {
+    try {
+      if (localStorage.getItem('theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    } catch (e) {}
+  })();
+</script>
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 <script src="https://www.youtube.com/iframe_api"></script>
 <style>
@@ -137,7 +148,15 @@ function toggleTheme() {
   html.classList.toggle("dark", isDark);
   html.setAttribute("data-theme", isDark ? "dark" : "light");
   btn.textContent = isDark ? "☀️" : "🌙";
+  try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch (e) {}
 }
+// 페이지 로드 시 버튼 아이콘 동기화 (다크면 ☀️)
+document.addEventListener("DOMContentLoaded", () => {
+  if (document.documentElement.classList.contains("dark")) {
+    const btn = document.getElementById("theme-btn");
+    if (btn) btn.textContent = "☀️";
+  }
+});
 function setActiveTab(el) {
   document.querySelectorAll("nav button").forEach(b => b.classList.remove("border-[#1F6F4A]", "text-[#1F6F4A]", "font-semibold"));
   el.classList.add("border-[#1F6F4A]", "text-[#1F6F4A]", "font-semibold");
