@@ -67,8 +67,14 @@ async def test_usage_report_renders_with_recent_calls():
              "model": "claude-sonnet-4-6", "cost_usd": 0.05,
              "item_id": 56, "note_title": "샘플 노트", "note_type": "youtube"},
         ]
+    async def fake_daily(db, days=30):
+        return [{"date": "2026-05-01", "claude": 0.0, "gpt": 0.0, "total": 0.0}]
+    async def fake_monthly_agg(db, months=12):
+        return [{"month": "2026-05", "claude": 0.0, "gpt": 0.0, "total": 0.0}]
     with patch("services.storage.get_monthly_cost", new=fake_monthly), \
-         patch("services.storage.list_recent_api_costs", new=fake_rows):
+         patch("services.storage.list_recent_api_costs", new=fake_rows), \
+         patch("services.storage.aggregate_daily_costs", new=fake_daily), \
+         patch("services.storage.aggregate_monthly_costs", new=fake_monthly_agg):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.get("/api/settings/usage")
     assert resp.status_code == 200
@@ -78,6 +84,40 @@ async def test_usage_report_renders_with_recent_calls():
     assert "0.42" in resp.text     # 누적 %.2f
     # KST 변환된 일시 표시 (UTC 14:30 → KST 23:30)
     assert "2026-05-31 23:30" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_usage_report_renders_daily_and_monthly_charts():
+    """/api/settings/usage가 일별/월별 차트 섹션을 렌더하고 다크모드 클래스 포함."""
+    async def fake_monthly(db, provider):
+        return 0.0
+    async def fake_rows(db, limit=100):
+        return []
+    async def fake_daily(db, days=30):
+        return [
+            {"date": f"2026-05-{i:02d}", "claude": 0.0, "gpt": 0.0, "total": 0.0}
+            for i in range(1, 31)
+        ]
+    async def fake_monthly_agg(db, months=12):
+        return [
+            {"month": f"2025-{i:02d}", "claude": 0.0, "gpt": 0.0, "total": 0.0}
+            for i in range(1, 13)
+        ]
+    with patch("services.storage.get_monthly_cost", new=fake_monthly), \
+         patch("services.storage.list_recent_api_costs", new=fake_rows), \
+         patch("services.storage.aggregate_daily_costs", new=fake_daily), \
+         patch("services.storage.aggregate_monthly_costs", new=fake_monthly_agg):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/settings/usage")
+    assert resp.status_code == 200
+    assert "최근 30일 (일별)" in resp.text
+    assert "최근 12개월 (월별)" in resp.text
+    # 다크모드 적용
+    assert "dark:bg-gray-900" in resp.text
+    assert "dark:border-gray-700" in resp.text
+    # 스택 색상
+    assert "#8B5CF6" in resp.text
+    assert "#22C55E" in resp.text
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import aiosqlite
 from services.ai.base import SummaryResult
@@ -204,6 +204,72 @@ async def get_monthly_cost(db_path: str, provider: str) -> float:
         )
         row = await cursor.fetchone()
         return row[0] if row else 0.0
+
+
+async def aggregate_daily_costs(db_path: str, days: int = 30) -> list[dict]:
+    """최근 N일 일별 provider별 cost. KST 기준(SQLite '+9 hours').
+    반환: [{date: 'YYYY-MM-DD', claude: float, gpt: float, total: float}, ...]
+    오늘로부터 days-1일 전까지. 비어 있는 날도 0으로 채워서 N개 반환."""
+    async with aiosqlite.connect(db_path) as db:
+        cursor = await db.execute(
+            """SELECT strftime('%Y-%m-%d', recorded_at, '+9 hours') AS day,
+                      provider,
+                      SUM(cost_usd) AS cost
+               FROM api_costs
+               WHERE recorded_at >= datetime('now', '-' || ? || ' days')
+               GROUP BY day, provider""",
+            (days,),
+        )
+        rows = await cursor.fetchall()
+    by_day: dict[str, dict[str, float]] = {}
+    for day, provider, cost in rows:
+        by_day.setdefault(day, {})[provider] = cost or 0.0
+
+    today_kst = datetime.now(KST).date()
+    out: list[dict] = []
+    for offset in range(days - 1, -1, -1):
+        d = (today_kst - timedelta(days=offset)).strftime("%Y-%m-%d")
+        bucket = by_day.get(d, {})
+        claude = bucket.get("claude", 0.0)
+        gpt = bucket.get("gpt", 0.0)
+        out.append({"date": d, "claude": claude, "gpt": gpt, "total": claude + gpt})
+    return out
+
+
+async def aggregate_monthly_costs(db_path: str, months: int = 12) -> list[dict]:
+    """최근 N개월 월별 provider별 cost. KST 기준.
+    반환: [{month: 'YYYY-MM', claude, gpt, total}, ...] 빈 달도 0으로 채움."""
+    async with aiosqlite.connect(db_path) as db:
+        cursor = await db.execute(
+            """SELECT strftime('%Y-%m', recorded_at, '+9 hours') AS month,
+                      provider,
+                      SUM(cost_usd) AS cost
+               FROM api_costs
+               WHERE recorded_at >= datetime('now', '-' || ? || ' months')
+               GROUP BY month, provider""",
+            (months,),
+        )
+        rows = await cursor.fetchall()
+    by_month: dict[str, dict[str, float]] = {}
+    for month, provider, cost in rows:
+        by_month.setdefault(month, {})[provider] = cost or 0.0
+
+    today_kst = datetime.now(KST).date()
+    out: list[dict] = []
+    year, mo = today_kst.year, today_kst.month
+    bucket_months: list[str] = []
+    for _ in range(months):
+        bucket_months.append(f"{year:04d}-{mo:02d}")
+        mo -= 1
+        if mo == 0:
+            mo = 12
+            year -= 1
+    for m in reversed(bucket_months):
+        bucket = by_month.get(m, {})
+        claude = bucket.get("claude", 0.0)
+        gpt = bucket.get("gpt", 0.0)
+        out.append({"month": m, "claude": claude, "gpt": gpt, "total": claude + gpt})
+    return out
 
 
 async def list_recent_api_costs(db_path: str, limit: int = 100) -> list[dict]:

@@ -29,7 +29,10 @@ async def get_cost_widget(request: Request):
 
 @router.get("/usage")
 async def usage_report(request: Request):
-    from services.storage import get_monthly_cost, list_recent_api_costs
+    from services.storage import (
+        get_monthly_cost, list_recent_api_costs,
+        aggregate_daily_costs, aggregate_monthly_costs,
+    )
     claude_cost = await get_monthly_cost(config.DB_PATH, "claude")
     gpt_cost = await get_monthly_cost(config.DB_PATH, "gpt")
     rows = await list_recent_api_costs(config.DB_PATH, limit=100)
@@ -43,6 +46,10 @@ async def usage_report(request: Request):
                 r["recorded_at_kst"] = raw
         else:
             r["recorded_at_kst"] = ""
+    daily = await aggregate_daily_costs(config.DB_PATH, days=30)
+    monthly = await aggregate_monthly_costs(config.DB_PATH, months=12)
+    daily_max = max((d["total"] for d in daily), default=0.0)
+    monthly_max = max((m["total"] for m in monthly), default=0.0)
     return templates.TemplateResponse(
         request, "usage.html",
         {
@@ -51,5 +58,9 @@ async def usage_report(request: Request):
             "gpt_cost": gpt_cost,
             "gpt_limit": config.GPT_MONTHLY_LIMIT_USD,
             "rows": rows,
+            "daily": daily,
+            "monthly": monthly,
+            "daily_max": daily_max,
+            "monthly_max": monthly_max,
         },
     )

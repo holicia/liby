@@ -5,6 +5,16 @@
   <title>API 사용 현황 — liby</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
+  <script>
+    // 부모 페이지의 dark 클래스 inherit (target=_blank 새 탭이면 localStorage 사용)
+    (function () {
+      try {
+        if (localStorage.getItem('theme') === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100">
 
@@ -24,27 +34,89 @@
     ] %}
     {% set pct = [((cost / (limit or 1)) * 100) | int, 100] | min %}
     {% set status = "초과" if pct >= 100 else ("임박" if pct >= 80 else "정상") %}
-    <div class="border border-[#E2E8E4] dark:border-gray-700 rounded-lg p-4">
+    <div class="border border-[#E2E8E4] dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-2">
           <span class="w-3 h-3 rounded-full" style="background:{{ color }}"></span>
-          <span class="text-sm font-semibold">{{ name }}</span>
+          <span class="text-sm font-semibold dark:text-gray-100">{{ name }}</span>
           <span class="text-[10px] font-bold px-1.5 py-0.5 rounded
-            {% if status == '정상' %}bg-[#EAF4EE] text-[#1F6F4A]
-            {% elif status == '임박' %}bg-yellow-100 text-yellow-700
-            {% else %}bg-red-100 text-red-600{% endif %}">{{ status }}</span>
+            {% if status == '정상' %}bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A]
+            {% elif status == '임박' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400
+            {% else %}bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400{% endif %}">{{ status }}</span>
         </div>
         <div>
-          <span class="text-base font-bold">${{ "%.2f"|format(cost) }}</span>
+          <span class="text-base font-bold dark:text-gray-100">${{ "%.3f"|format(cost) }}</span>
           <span class="text-xs text-gray-400">/ ${{ "%.2f"|format(limit) }}</span>
         </div>
       </div>
       <div class="bg-[#E2E8E4] dark:bg-gray-700 rounded h-2 overflow-hidden">
-        <div class="h-full rounded" style="width:{{ pct }}%; background:{{ color }}; opacity:.75;"></div>
+        <div class="h-full rounded" style="width:{{ pct }}%; background:{{ color }}; opacity:.85;"></div>
       </div>
     </div>
     {% endfor %}
   </section>
+
+  <!-- 일별 차트 -->
+  <section>
+    <h2 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">최근 30일 (일별)</h2>
+    <div class="border border-[#E2E8E4] dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
+      <div class="flex items-end gap-1 h-32">
+        {% for d in daily %}
+        {% set claude_h = (d.claude / (daily_max or 1) * 100) | round(2) %}
+        {% set gpt_h = (d.gpt / (daily_max or 1) * 100) | round(2) %}
+        <div class="flex-1 flex flex-col-reverse min-w-[6px] rounded-t overflow-hidden bg-gray-100 dark:bg-gray-700/40 group relative"
+             title="{{ d.date }} · Claude ${{ '%.4f'|format(d.claude) }} · GPT ${{ '%.4f'|format(d.gpt) }} · 합계 ${{ '%.4f'|format(d.total) }}">
+          {% if d.claude > 0 %}
+          <div style="height: {{ claude_h }}%; background: #8B5CF6;"></div>
+          {% endif %}
+          {% if d.gpt > 0 %}
+          <div style="height: {{ gpt_h }}%; background: #22C55E;"></div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+        <span>{{ daily[0].date if daily else '' }}</span>
+        <span class="text-gray-500 dark:text-gray-300">최댓값 ${{ "%.3f"|format(daily_max) }}</span>
+        <span>{{ daily[-1].date if daily else '' }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 월별 차트 -->
+  <section>
+    <h2 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">최근 12개월 (월별)</h2>
+    <div class="border border-[#E2E8E4] dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
+      <div class="flex items-end gap-2 h-32">
+        {% for m in monthly %}
+        {% set claude_h = (m.claude / (monthly_max or 1) * 100) | round(2) %}
+        {% set gpt_h = (m.gpt / (monthly_max or 1) * 100) | round(2) %}
+        <div class="flex-1 flex flex-col items-center">
+          <div class="w-full flex-1 flex flex-col-reverse rounded-t overflow-hidden bg-gray-100 dark:bg-gray-700/40"
+               title="{{ m.month }} · Claude ${{ '%.4f'|format(m.claude) }} · GPT ${{ '%.4f'|format(m.gpt) }} · 합계 ${{ '%.4f'|format(m.total) }}">
+            {% if m.claude > 0 %}
+            <div style="height: {{ claude_h }}%; background: #8B5CF6;"></div>
+            {% endif %}
+            {% if m.gpt > 0 %}
+            <div style="height: {{ gpt_h }}%; background: #22C55E;"></div>
+            {% endif %}
+          </div>
+          <span class="text-[9px] text-gray-400 mt-1 font-mono">{{ m.month[-2:] }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="flex justify-between items-center text-[10px] text-gray-400 mt-1">
+        <span>{{ monthly[0].month if monthly else '' }} ~ {{ monthly[-1].month if monthly else '' }}</span>
+        <span class="text-gray-500 dark:text-gray-300">최댓값 ${{ "%.3f"|format(monthly_max) }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 범례 -->
+  <div class="flex items-center gap-4 text-[11px] text-gray-600 dark:text-gray-300">
+    <div class="flex items-center gap-1"><span class="w-3 h-3 rounded" style="background:#8B5CF6"></span> Claude</div>
+    <div class="flex items-center gap-1"><span class="w-3 h-3 rounded" style="background:#22C55E"></span> GPT</div>
+  </div>
 
   <!-- 최근 호출 표 -->
   <section>
@@ -52,7 +124,7 @@
     {% if rows %}
     <div class="overflow-x-auto border border-[#E2E8E4] dark:border-gray-700 rounded-lg">
       <table class="w-full text-sm">
-        <thead class="bg-[#F3F5F4] dark:bg-gray-800 text-[11px] text-gray-500 uppercase">
+        <thead class="bg-[#F3F5F4] dark:bg-gray-800 text-[11px] text-gray-500 dark:text-gray-400 uppercase">
           <tr>
             <th class="text-left px-3 py-2 font-semibold">일시 (KST)</th>
             <th class="text-left px-3 py-2 font-semibold">노트</th>
@@ -61,21 +133,21 @@
             <th class="text-right px-3 py-2 font-semibold">Cost</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="bg-white dark:bg-gray-900">
           {% for r in rows %}
-          <tr class="border-t border-[#E2E8E4] dark:border-gray-700 text-[12px]">
-            <td class="px-3 py-1.5 text-gray-500 font-mono whitespace-nowrap">{{ r.recorded_at_kst }}</td>
-            <td class="px-3 py-1.5">
+          <tr class="border-t border-[#E2E8E4] dark:border-gray-700 text-[12px] hover:bg-[#F9FAFA] dark:hover:bg-gray-800/60">
+            <td class="px-3 py-1.5 text-gray-500 dark:text-gray-400 font-mono whitespace-nowrap">{{ r.recorded_at_kst }}</td>
+            <td class="px-3 py-1.5 text-gray-700 dark:text-gray-200">
               {% if r.note_title %}
               <span class="text-[10px] bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] px-1.5 py-0.5 rounded font-bold mr-1">{{ (r.note_type or '?')|upper }}</span>
               {{ r.note_title }}
               {% else %}
-              <span class="text-gray-400">(삭제된 노트)</span>
+              <span class="text-gray-400 dark:text-gray-500">(삭제된 노트)</span>
               {% endif %}
             </td>
             <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ r.provider }}</td>
-            <td class="px-3 py-1.5 text-gray-500 font-mono">{{ r.model or '-' }}</td>
-            <td class="px-3 py-1.5 text-right font-mono">${{ "%.4f"|format(r.cost_usd or 0) }}</td>
+            <td class="px-3 py-1.5 text-gray-500 dark:text-gray-400 font-mono">{{ r.model or '-' }}</td>
+            <td class="px-3 py-1.5 text-right font-mono text-gray-700 dark:text-gray-200">${{ "%.4f"|format(r.cost_usd or 0) }}</td>
           </tr>
           {% endfor %}
         </tbody>

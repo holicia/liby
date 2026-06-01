@@ -54,6 +54,38 @@ async def test_save_note_creates_md_file(db, tmp_path):
     assert len(md_files) == 1
 
 @pytest.mark.asyncio
+async def test_aggregate_daily_costs_fills_empty_days_and_groups_by_provider(db):
+    """일별 cost 집계는 빈 날짜도 0으로 포함하고 provider별 분리."""
+    from services.storage import aggregate_daily_costs
+    # 오늘 cost 2건 (claude, gpt)
+    await record_api_cost(db, provider="claude", model="m", input_tokens=0, output_tokens=0, cost_usd=0.10)
+    await record_api_cost(db, provider="gpt", model="m", input_tokens=0, output_tokens=0, cost_usd=0.05)
+    out = await aggregate_daily_costs(db, days=7)
+    assert len(out) == 7
+    # 마지막 항목이 오늘
+    last = out[-1]
+    assert last["claude"] == pytest.approx(0.10)
+    assert last["gpt"] == pytest.approx(0.05)
+    assert last["total"] == pytest.approx(0.15)
+    # 앞 6일은 0
+    for d in out[:6]:
+        assert d["claude"] == 0.0 and d["gpt"] == 0.0 and d["total"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_aggregate_monthly_costs_fills_empty_months(db):
+    from services.storage import aggregate_monthly_costs
+    await record_api_cost(db, provider="claude", model="m", input_tokens=0, output_tokens=0, cost_usd=0.20)
+    out = await aggregate_monthly_costs(db, months=3)
+    assert len(out) == 3
+    # 마지막 = 이번 달
+    assert out[-1]["claude"] == pytest.approx(0.20)
+    # 앞 2개월은 0
+    for m in out[:2]:
+        assert m["total"] == 0.0
+
+
+@pytest.mark.asyncio
 async def test_list_recent_api_costs_orders_desc_and_joins_note_title(db, tmp_path):
     """list_recent_api_costs는 recorded_at desc 정렬 + items 테이블 LEFT JOIN."""
     from services.storage import list_recent_api_costs
