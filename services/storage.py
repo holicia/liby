@@ -232,7 +232,14 @@ async def aggregate_daily_costs(db_path: str, days: int = 30) -> list[dict]:
         bucket = by_day.get(d, {})
         claude = bucket.get("claude", 0.0)
         gpt = bucket.get("gpt", 0.0)
-        out.append({"date": d, "claude": claude, "gpt": gpt, "total": claude + gpt})
+        claude_cli = bucket.get("claude-cli", 0.0)
+        codex_cli = bucket.get("codex-cli", 0.0)
+        out.append({
+            "date": d,
+            "claude": claude, "gpt": gpt,
+            "claude_cli": claude_cli, "codex_cli": codex_cli,
+            "total": claude + gpt + claude_cli + codex_cli,
+        })
     return out
 
 
@@ -268,7 +275,14 @@ async def aggregate_monthly_costs(db_path: str, months: int = 12) -> list[dict]:
         bucket = by_month.get(m, {})
         claude = bucket.get("claude", 0.0)
         gpt = bucket.get("gpt", 0.0)
-        out.append({"month": m, "claude": claude, "gpt": gpt, "total": claude + gpt})
+        claude_cli = bucket.get("claude-cli", 0.0)
+        codex_cli = bucket.get("codex-cli", 0.0)
+        out.append({
+            "month": m,
+            "claude": claude, "gpt": gpt,
+            "claude_cli": claude_cli, "codex_cli": codex_cli,
+            "total": claude + gpt + claude_cli + codex_cli,
+        })
     return out
 
 
