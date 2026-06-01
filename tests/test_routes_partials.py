@@ -121,6 +121,27 @@ async def test_usage_report_renders_daily_and_monthly_charts():
 
 
 @pytest.mark.asyncio
+async def test_index_input_forms_offer_cli_providers():
+    """5 input partial들이 claude-cli/codex-cli 옵션을 모두 노출해야 한다."""
+    tabs = ["youtube", "pdf", "text", "code", "markdown"]
+    claude_cli_count = 0
+    codex_cli_count = 0
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        # `/` includes youtube; the rest are htmx-loaded via /partials/input/{tab}.
+        index = await c.get("/")
+        assert index.status_code == 200
+        claude_cli_count += index.text.count('value="claude-cli"')
+        codex_cli_count += index.text.count('value="codex-cli"')
+        for tab in tabs:
+            resp = await c.get(f"/partials/input/{tab}")
+            assert resp.status_code == 200, tab
+            claude_cli_count += resp.text.count('value="claude-cli"')
+            codex_cli_count += resp.text.count('value="codex-cli"')
+    assert claude_cli_count >= 5
+    assert codex_cli_count >= 5
+
+
+@pytest.mark.asyncio
 async def test_vault_static_mount_serves_existing_file(tmp_path):
     """/vault/<path>가 config.VAULT_PATH 하위의 실제 파일을 서빙해야 한다."""
     import config

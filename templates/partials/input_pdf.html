@@ -8,8 +8,10 @@
            onchange="document.getElementById('pdf-filename').textContent=this.files[0]?.name||'선택된 파일 없음'">
   </label>
   <select name="provider" class="bg-white border border-[#E2E8E4] rounded-lg px-3 py-2.5 text-xs text-gray-500 dark:bg-gray-800">
-    <option value="claude">Claude</option>
-    <option value="gpt">GPT</option>
+    <option value="claude-cli">Claude CLI (구독, 무료)</option>
+    <option value="codex-cli">Codex CLI (구독, 무료)</option>
+    <option value="claude">Claude API ($)</option>
+    <option value="gpt">GPT API ($)</option>
   </select>
   <select name="mode" class="bg-white border border-[#E2E8E4] rounded-lg px-3 py-2.5 text-xs text-gray-500 dark:bg-gray-800">
     <option value="quick">빠른 정리</option>
