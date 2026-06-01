@@ -488,28 +488,31 @@ async def test_save_note_segments_defaults_empty(db, tmp_path):
 
 @pytest.mark.asyncio
 async def test_aggregate_daily_costs_includes_cli_buckets(db):
+    """hyphen→underscore 매핑 (DB 'claude-cli' → 출력 'claude_cli')이 값까지 유실 없이 전달."""
     from services.storage import aggregate_daily_costs
     await record_api_cost(db, provider="claude-cli", model="claude",
-                          input_tokens=100, output_tokens=50, cost_usd=0.0)
+                          input_tokens=100, output_tokens=50, cost_usd=0.12)
     await record_api_cost(db, provider="codex-cli", model="codex",
-                          input_tokens=200, output_tokens=80, cost_usd=0.0)
+                          input_tokens=200, output_tokens=80, cost_usd=0.34)
     out = await aggregate_daily_costs(db, days=3)
     assert len(out) == 3
     last = out[-1]
-    assert "claude_cli" in last
-    assert "codex_cli" in last
-    assert last["claude_cli"] == pytest.approx(0.0)
-    assert last["codex_cli"] == pytest.approx(0.0)
-    # 기존 키 유지
-    assert "claude" in last and "gpt" in last and "total" in last
+    assert last["claude_cli"] == pytest.approx(0.12)
+    assert last["codex_cli"] == pytest.approx(0.34)
+    # 기존 키 유지 + total은 4 provider 합산
+    assert last["claude"] == pytest.approx(0.0)
+    assert last["gpt"] == pytest.approx(0.0)
+    assert last["total"] == pytest.approx(0.46)
 
 
 @pytest.mark.asyncio
 async def test_aggregate_monthly_costs_includes_cli_buckets(db):
     from services.storage import aggregate_monthly_costs
     await record_api_cost(db, provider="claude-cli", model="claude",
-                          input_tokens=100, output_tokens=50, cost_usd=0.0)
+                          input_tokens=100, output_tokens=50, cost_usd=0.20)
     out = await aggregate_monthly_costs(db, months=3)
     assert len(out) == 3
     last = out[-1]
-    assert "claude_cli" in last and "codex_cli" in last
+    assert last["claude_cli"] == pytest.approx(0.20)
+    assert last["codex_cli"] == pytest.approx(0.0)
+    assert last["total"] == pytest.approx(0.20)
