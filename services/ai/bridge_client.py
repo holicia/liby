@@ -72,7 +72,18 @@ async def run_agent(
                 if status in _TERMINAL_STATUSES:
                     summary = data.get("summary") or ""
                     if status != "succeeded":
-                        raise BridgeError(status, data.get("exitCode"), summary)
+                        # bridge가 summary를 비워두는 케이스(claude CLI 자체 에러 등)에
+                        # error 필드 + stderr 마지막 줄들을 합쳐 더 풍부한 진단 메시지로.
+                        error_msg = data.get("error") or ""
+                        stderr_lines = [
+                            ev.get("data", "") for ev in (data.get("events") or [])
+                            if ev.get("stream") == "stderr"
+                        ]
+                        last_stderr = "\n".join(stderr_lines[-5:]).strip()
+                        rich_summary = " | ".join(
+                            x for x in (summary, error_msg, last_stderr) if x
+                        ) or "(bridge가 원인 메시지를 제공하지 않음)"
+                        raise BridgeError(status, data.get("exitCode"), rich_summary)
                     usage_raw = data.get("usage") or {}
                     usage = BridgeUsage(
                         input_tokens=int(usage_raw.get("inputTokens", 0) or 0),

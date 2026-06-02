@@ -52,6 +52,10 @@ async def run_worker() -> None:
             await coro_fn(task)
             task.status = "done"
         except Exception as e:
+            import logging, traceback
+            logging.getLogger(__name__).error(
+                f"task {task.id} failed ({type(e).__name__}): {e}\n{traceback.format_exc()}"
+            )
             task.status = "error"
             task.error = str(e)
         finally:
