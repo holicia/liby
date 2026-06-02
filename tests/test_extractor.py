@@ -90,6 +90,16 @@ def test_youtube_video_id_ok_and_none():
     assert youtube_video_id("https://youtu.be/dQw4w9WgXcQ") == "dQw4w9WgXcQ"
     assert youtube_video_id("not a url") is None
 
+
+def test_youtube_video_id_supports_live_and_embed_paths():
+    """/live/<id> (라이브 다시보기) + /embed/<id> (iframe) 패턴 추출."""
+    assert youtube_video_id(
+        "https://www.youtube.com/live/iqoPgoYBVaM?si=U00J_VkhggM5EvxU"
+    ) == "iqoPgoYBVaM"
+    assert youtube_video_id(
+        "https://www.youtube.com/embed/dQw4w9WgXcQ"
+    ) == "dQw4w9WgXcQ"
+
 def test_parse_native_chapters_all_missing_start_returns_none():
     assert _parse_native_chapters([{"title": "제목만"}, {"title": "또"}]) is None
 
