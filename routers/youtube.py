@@ -6,7 +6,7 @@ from services.extractor import extract_youtube_full, segments_to_transcript, you
 from services.chapters import resolve_chapters
 from services.ai import get_provider
 from services.storage import save_note, record_api_cost, safe_filename
-from services.task_queue import new_task, enqueue, queue_meta
+from services.task_queue import new_task, enqueue, queue_meta, register_builder
 from services.capture import capture_chapter_screenshots
 from routers._utils import parse_project_id
 from templates_env import templates
@@ -26,21 +26,15 @@ async def get_db_topics():
         topics = []
     yield topics
 
-@router.post("")
-async def analyze_youtube(
-    request: Request,
-    url: str = Form(...),
-    provider: str = Form(config.DEFAULT_AI_PROVIDER),
-    mode: str = Form("quick"),
-    project_id: str = Form(""),
-):
-    pid = parse_project_id(project_id)
-    # oEmbed로 영상 제목을 미리 가져와 큐 카드에 표시(실패 시 URL 폴백)
-    title = await youtube_title(url) or url
-    task = new_task("youtube", title)
-    ai = get_provider(provider)
+def _build_youtube_do_work(spec: dict):
+    """spec → 분석 코루틴 생성. task_queue가 영구화·재시도 시 이 builder로 재구성한다."""
+    url = spec["url"]
+    provider = spec["provider"]
+    mode = spec.get("mode", "quick")
+    pid = spec.get("project_id")
 
     async def do_work(t):
+        ai = get_provider(provider)
         t.progress = "YouTube 자막 추출 중..."
         data = await extract_youtube_full(url)
         t.progress = "AI 분석 중..."
@@ -93,5 +87,26 @@ async def analyze_youtube(
             )
         t.note_id = note_id
 
-    await enqueue(task, do_work)
+    return do_work
+
+
+# 모듈 import 시점에 builder 등록(main.py가 라우터를 import할 때 자동 실행).
+register_builder("youtube", _build_youtube_do_work)
+
+
+@router.post("")
+async def analyze_youtube(
+    request: Request,
+    url: str = Form(...),
+    provider: str = Form(config.DEFAULT_AI_PROVIDER),
+    mode: str = Form("quick"),
+    project_id: str = Form(""),
+):
+    pid = parse_project_id(project_id)
+    # oEmbed로 영상 제목을 미리 가져와 큐 카드에 표시(실패 시 URL 폴백)
+    title = await youtube_title(url) or url
+    spec = {"source_type": "youtube", "url": url, "provider": provider,
+            "mode": mode, "project_id": pid}
+    task = new_task("youtube", title, spec=spec)
+    await enqueue(task)  # coro_fn 생략 → worker가 builder로 재구성, 영구화·재시도 가능
     return templates.TemplateResponse(request, "partials/task_card.html", {"task": task, **queue_meta(task)})

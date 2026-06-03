@@ -55,6 +55,23 @@ CREATE TABLE IF NOT EXISTS projects (
 )
 """
 
+CREATE_ANALYSIS_TASKS = """
+CREATE TABLE IF NOT EXISTS analysis_tasks (
+    id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,            -- queued | running | done | error
+    source_type TEXT NOT NULL,
+    title TEXT,
+    progress TEXT DEFAULT '대기 중...',
+    note_id INTEGER,
+    error TEXT,
+    attempts INTEGER DEFAULT 0,      -- 시도 횟수(첫 시도=1, 재시도=2)
+    batch_index INTEGER DEFAULT 0,
+    spec_json TEXT NOT NULL,         -- url/provider/mode/project_id 등 입력 복원용
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+"""
+
 
 async def _ensure_column(db, column: str, decl: str) -> None:
     cursor = await db.execute("PRAGMA table_info(items)")
@@ -69,6 +86,7 @@ async def init_db(db_path: str = config.DB_PATH) -> None:
         await db.execute(CREATE_SETTINGS)
         await db.execute(CREATE_API_COSTS)
         await db.execute(CREATE_PROJECTS)
+        await db.execute(CREATE_ANALYSIS_TASKS)
         await _ensure_column(db, "project_id", "INTEGER")
         await _ensure_column(db, "timeline", "TEXT")
         await _ensure_column(db, "paragraphs", "TEXT")

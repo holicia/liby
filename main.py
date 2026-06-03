@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -6,13 +7,19 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from models import init_db
 from templates_env import templates
-from services.task_queue import run_worker
+from services.task_queue import run_worker, restore_pending_tasks
 import config
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
     asyncio.create_task(run_worker())
+    # 라우터들이 이미 import되어 builder가 등록된 상태. orphan task를 큐에 다시 넣음.
+    restored = await restore_pending_tasks()
+    if restored:
+        logging.getLogger(__name__).info(
+            "restored %d pending task(s) from previous run", restored
+        )
     yield
 
 app = FastAPI(title="liby", lifespan=lifespan)
