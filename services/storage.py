@@ -353,8 +353,11 @@ async def list_notes(
         query += " AND project_id = ?"
         params.append(int(project_id))
     if search:
-        query += " AND (title LIKE ? OR summary LIKE ?)"
-        params.extend([f"%{search}%", f"%{search}%"])
+        # 대소문자 무시 + title/summary/tags 모두 부분 일치
+        pattern = f"%{search.lower()}%"
+        query += (" AND (LOWER(title) LIKE ? OR LOWER(summary) LIKE ?"
+                  " OR LOWER(tags) LIKE ?)")
+        params.extend([pattern, pattern, pattern])
     if tags:
         for tag in tags:
             query += " AND tags LIKE ?"

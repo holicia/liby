@@ -1,10 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
-<p id="section-label" class="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-3">최근 업데이트</p>
+<div class="flex items-center gap-3 mb-3">
+  <p id="section-label" class="text-[11px] font-bold uppercase tracking-widest text-gray-400">최근 업데이트</p>
+  <div class="flex-1 relative">
+    <input type="search" name="search" id="note-search"
+           placeholder="제목·요약·태그 검색…"
+           hx-get="/api/items"
+           hx-target="#note-list"
+           hx-trigger="keyup changed delay:300ms, search"
+           hx-swap="innerHTML"
+           hx-include="this"
+           class="w-full text-xs bg-[#F3F5F4] border border-[#E2E8E4] rounded-lg pl-7 pr-3 py-1.5 text-gray-700 dark:text-gray-200 outline-none focus:border-[#1F6F4A] dark:bg-gray-800 dark:border-gray-700"
+           autocomplete="off">
+    <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-[11px]">🔍</span>
+  </div>
+</div>
 <div id="note-list"
      hx-get="/api/items"
      hx-trigger="load, noteCompleted from:body"
      hx-swap="innerHTML"
+     hx-include="#note-search"
      class="space-y-2 mb-7">
 </div>
 

@@ -487,6 +487,47 @@ async def test_save_note_segments_defaults_empty(db, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_list_notes_search_matches_title_summary_tags_case_insensitive(db, tmp_path):
+    """검색은 title/summary/tags 셋 다 + 대소문자 무시."""
+    from services.storage import list_notes
+    vault = str(tmp_path / "vault")
+    # 노트 3개: 검색어가 각각 다른 필드에 매칭
+    r1 = make_result()
+    r1.title = "Claude Code CLI 입문"
+    r1.summary = "다른 도구 비교 없음"
+    r1.tags = []
+    await save_note(db_path=db, vault_path=vault, source_type="youtube",
+                    source_url="u1", result=r1, ai_provider="claude")
+    r2 = make_result()
+    r2.title = "전혀 다른 제목"
+    r2.summary = "이 영상은 cli 자동화 패턴을 다룬다"
+    r2.tags = []
+    await save_note(db_path=db, vault_path=vault, source_type="youtube",
+                    source_url="u2", result=r2, ai_provider="claude")
+    r3 = make_result()
+    r3.title = "전혀 다른 제목2"
+    r3.summary = "tag 매치만"
+    r3.tags = ["CLI", "ai"]
+    await save_note(db_path=db, vault_path=vault, source_type="youtube",
+                    source_url="u3", result=r3, ai_provider="claude")
+    # 비매칭
+    r4 = make_result()
+    r4.title = "투자"
+    r4.summary = "주식 이야기"
+    r4.tags = ["finance"]
+    await save_note(db_path=db, vault_path=vault, source_type="youtube",
+                    source_url="u4", result=r4, ai_provider="claude")
+
+    # 대문자 'CLI'로 검색해도 cli 매칭(case insensitive)
+    rows = await list_notes(db, search="CLI")
+    titles = {r["title"] for r in rows}
+    assert "Claude Code CLI 입문" in titles  # title match
+    assert "전혀 다른 제목" in titles  # summary "cli" match
+    assert "전혀 다른 제목2" in titles  # tag "CLI" match
+    assert "투자" not in titles
+
+
+@pytest.mark.asyncio
 async def test_aggregate_daily_costs_includes_cli_buckets(db):
     """hyphen→underscore 매핑 (DB 'claude-cli' → 출력 'claude_cli')이 값까지 유실 없이 전달."""
     from services.storage import aggregate_daily_costs
