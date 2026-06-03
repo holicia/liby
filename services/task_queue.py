@@ -40,6 +40,8 @@ _queue: asyncio.Queue = asyncio.Queue()
 _is_running = False
 _batch_total = 0
 _BUILDERS: dict[str, Builder] = {}
+# 현재 실행 중인 coro_fn을 감싼 asyncio.Task. cancel_task가 .cancel() 호출.
+_inflight: dict[str, asyncio.Task] = {}
 
 
 def register_builder(source_type: str, builder: Builder) -> None:
@@ -103,6 +105,10 @@ async def run_worker() -> None:
     log = logging.getLogger(__name__)
     while True:
         task, coro_fn = await _queue.get()
+        # 큐에서 꺼냈는데 이미 cancel된 task면 skip (실행 안 함)
+        if task.status == "cancelled":
+            _queue.task_done()
+            continue
         _is_running = True
         task.status = "running"
         task.attempts += 1
@@ -123,8 +129,19 @@ async def run_worker() -> None:
                         f"source_type={task.source_type!r}용 builder 미등록"
                     )
                 coro_fn = builder(task.spec)
-            await coro_fn(task)
+            # coro_fn 실행을 별도 asyncio.Task로 감싸 cancel_task가 외부에서 cancel 가능
+            inflight = asyncio.create_task(coro_fn(task))
+            _inflight[task.id] = inflight
+            try:
+                await inflight
+            finally:
+                _inflight.pop(task.id, None)
             task.status = "done"
+        except asyncio.CancelledError:
+            # 사용자가 명시적으로 취소. 재시도 없이 종결.
+            task.status = "cancelled"
+            task.progress = "취소됨"
+            task.error = "사용자가 취소함"
         except Exception as e:
             log.error(
                 "task %s failed (attempt %d/%d, %s): %s",
@@ -145,8 +162,30 @@ async def run_worker() -> None:
         finally:
             _is_running = False
             _queue.task_done()
-            if persisted and task.status in ("done", "error"):
+            if persisted and task.status in ("done", "error", "cancelled"):
                 await _save_task(task)
+
+
+async def cancel_task(task_id: str) -> bool:
+    """사용자 요청 취소. queued면 즉시 마크(worker가 fetch 시 skip),
+    running이면 inflight asyncio.Task를 cancel해 CancelledError를 전파한다.
+    이미 종결된 task(done/error/cancelled)는 noop. 반환: 무언가 변경됐는지."""
+    task = _tasks.get(task_id)
+    if task is None or task.status in ("done", "error", "cancelled"):
+        return False
+    if task.status == "queued":
+        task.status = "cancelled"
+        task.progress = "취소됨"
+        task.error = "사용자가 취소함"
+        if task.source_type in _BUILDERS:
+            await _save_task(task)
+        return True
+    # running — worker가 wrapping한 asyncio.Task를 cancel
+    inflight = _inflight.get(task_id)
+    if inflight is not None and not inflight.done():
+        inflight.cancel()
+        return True
+    return False
 
 
 async def restore_pending_tasks(db_path: str | None = None) -> int:
@@ -209,3 +248,4 @@ def _reset_for_tests() -> None:
     _is_running = False
     _batch_total = 0
     _BUILDERS.clear()
+    _inflight.clear()

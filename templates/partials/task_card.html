@@ -16,6 +16,12 @@
     {% if batch_total and batch_total > 1 %}
     <span class="flex-shrink-0 text-[11px] font-medium text-gray-400">전체 {{ batch_total }}개 중 {{ batch_index }}번째</span>
     {% endif %}
+    {% if task.status in ('queued', 'running') %}
+    <button hx-post="/api/tasks/{{ task.id }}/cancel" hx-swap="none"
+            hx-target="#task-{{ task.id }}"
+            class="flex-shrink-0 text-[12px] text-gray-400 hover:text-red-500 transition-colors px-1 leading-none"
+            title="분석 취소">✕</button>
+    {% endif %}
   </div>
   <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
     <div class="h-full rounded-full transition-all duration-500 ease-out bg-[#1F6F4A] dark:bg-[#34A66A] {% if task.status == 'queued' %}animate-pulse opacity-50{% endif %}"

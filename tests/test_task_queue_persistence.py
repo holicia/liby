@@ -154,6 +154,75 @@ async def test_restore_pending_marks_error_if_max_attempts_reached(_isolated):
 
 
 @pytest.mark.asyncio
+async def test_cancel_queued_task_marks_cancelled(_isolated):
+    """queued 상태 task를 cancel하면 status='cancelled', error=사용자 취소 메시지."""
+    tq.register_builder("youtube", lambda s: (lambda t: None))
+    task = tq.new_task("youtube", "t", spec={"url": "u"})
+    await asyncio.sleep(0.05)
+    ok = await tq.cancel_task(task.id)
+    assert ok is True
+    assert task.status == "cancelled"
+    assert task.progress == "취소됨"
+    assert "사용자" in (task.error or "")
+    row = await _row(_isolated, task.id)
+    assert row["status"] == "cancelled"
+
+
+@pytest.mark.asyncio
+async def test_cancel_running_task_raises_cancelled_error(_isolated):
+    """running 상태 task를 cancel하면 worker 안 coro_fn에 CancelledError 전달."""
+    started = asyncio.Event()
+    cancelled_seen = asyncio.Event()
+
+    def builder(spec):
+        async def do_work(t):
+            started.set()
+            try:
+                await asyncio.sleep(10)  # 충분히 길게
+            except asyncio.CancelledError:
+                cancelled_seen.set()
+                raise
+        return do_work
+
+    tq.register_builder("youtube", builder)
+    task = tq.new_task("youtube", "t", spec={"url": "u"})
+    worker = asyncio.create_task(tq.run_worker())
+    await tq.enqueue(task)
+    await asyncio.wait_for(started.wait(), timeout=2.0)
+    # 이제 running 상태에서 cancel
+    ok = await tq.cancel_task(task.id)
+    assert ok is True
+    await asyncio.wait_for(cancelled_seen.wait(), timeout=2.0)
+    # worker가 cancelled로 종결할 때까지 잠깐 대기
+    for _ in range(30):
+        await asyncio.sleep(0.05)
+        if task.status == "cancelled":
+            break
+    worker.cancel()
+    assert task.status == "cancelled"
+    # 자동 재시도 없음
+    assert task.attempts == 1
+
+
+@pytest.mark.asyncio
+async def test_cancel_already_done_returns_false(_isolated):
+    """이미 종결된 task에 cancel 호출 → noop, False 반환."""
+    tq.register_builder("youtube", lambda s: (lambda t: None))
+    task = tq.new_task("youtube", "t", spec={"url": "u"})
+    await asyncio.sleep(0.05)
+    task.status = "done"
+    ok = await tq.cancel_task(task.id)
+    assert ok is False
+
+
+@pytest.mark.asyncio
+async def test_cancel_unknown_id_returns_false(_isolated):
+    """존재하지 않는 task id에 cancel → False."""
+    ok = await tq.cancel_task("nonexistent")
+    assert ok is False
+
+
+@pytest.mark.asyncio
 async def test_restore_skips_unknown_source_type(_isolated):
     """builder 없는 source_type은 restore에서 skip(메모리에도 안 들어감)."""
     async with aiosqlite.connect(_isolated) as db:
