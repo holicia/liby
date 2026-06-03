@@ -5,6 +5,30 @@
   <title>{{ note.title }} — liby</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
+  <script>
+    // FOUC 방지: 저장된 테마를 head에서 즉시 적용 (base.html과 동일 패턴)
+    (function () {
+      try {
+        if (localStorage.getItem('theme') === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    })();
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = !html.classList.contains('dark');
+      html.classList.toggle('dark', isDark);
+      const btn = document.getElementById('theme-btn');
+      if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+      try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch (e) {}
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      if (document.documentElement.classList.contains('dark')) {
+        const btn = document.getElementById('theme-btn');
+        if (btn) btn.textContent = '☀️';
+      }
+    });
+  </script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://www.youtube.com/iframe_api"></script>
 </head>
@@ -16,6 +40,8 @@
   <a href="/" class="text-[#1F6F4A] dark:text-[#34A66A] font-bold">📚 liby</a>
   <span class="text-gray-400 text-sm">/</span>
   <h1 class="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate flex-1">{{ note.title }}</h1>
+  <button onclick="toggleTheme()" id="theme-btn" aria-label="테마 전환"
+          class="text-base px-2 py-1 border border-[#E2E8E4] dark:border-gray-700 rounded-md text-gray-500 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] dark:hover:bg-[#14291E] transition-colors">🌙</button>
   <a href="{{ note.source_url }}" target="_blank" class="text-xs text-gray-400 hover:text-[#1F6F4A]">원본 영상 ↗</a>
 </header>
 
