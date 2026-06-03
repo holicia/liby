@@ -127,6 +127,8 @@
     </div>
     <!-- 계층 본문 -->
     <div class="mb-4 space-y-6">
+      {# 본문 전체 ref 누적 번호. paragraph마다 1로 리셋되지 않도록. #}
+      {% set ref_ns = namespace(no=0) %}
       {% for sec in sec_list %}
       {% set sec_idx = loop.index %}
       <details open id="sec-{{ sec_idx }}" class="group">
@@ -146,8 +148,9 @@
               <div>
                 {% set effective = it.refs if it.refs else ([{"t": it.t, "snippet": it.quote}] if (it.quote is defined and it.quote and it.t is defined) else []) %}
                 <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">
-                  {% if it.text %}{{ it.text }}{% endif %}{{ ref_chips(effective, video_id) }}
+                  {% if it.text %}{{ it.text }}{% endif %}{{ ref_chips(effective, video_id, start=ref_ns.no + 1) }}
                 </p>
+                {% set ref_ns.no = ref_ns.no + (effective | length) %}
               </div>
               {% else %}
               {# 백워드 호환: 옛 {lead, bullets} #}
@@ -180,12 +183,14 @@
     <div class="mb-4">
       <h3 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">본문</h3>
       <div class="space-y-3">
+        {% set ref_ns = namespace(no=0) %}
         {% for p in p_list %}
         <div>
           {% set effective = p.refs if p.refs else ([{"t": p.t, "snippet": p.quote}] if (p.quote is defined and p.quote and p.t is defined) else []) %}
           <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">
-            {{ p.text }}{{ ref_chips(effective, video_id) }}
+            {{ p.text }}{{ ref_chips(effective, video_id, start=ref_ns.no + 1) }}
           </p>
+          {% set ref_ns.no = ref_ns.no + (effective | length) %}
         </div>
         {% endfor %}
       </div>
