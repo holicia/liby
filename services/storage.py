@@ -467,6 +467,13 @@ async def unassigned_count(db_path: str) -> int:
         return (await cursor.fetchone())[0]
 
 
+async def count_notes(db_path: str) -> int:
+    """전체 노트 수. 사이드바 '전체 노트' 뱃지에 사용 — 검색/필터와 무관한 raw count."""
+    async with aiosqlite.connect(db_path) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM items")
+        return (await cursor.fetchone())[0]
+
+
 async def set_note_project(db_path: str, note_id: int, project_id: int | None) -> None:
     async with aiosqlite.connect(db_path) as db:
         name = await _project_name(db, project_id) or ""

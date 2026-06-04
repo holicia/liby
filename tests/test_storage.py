@@ -487,6 +487,19 @@ async def test_save_note_segments_defaults_empty(db, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_count_notes_returns_total_regardless_of_filters(db, tmp_path):
+    from services.storage import count_notes
+    vault = str(tmp_path / "vault")
+    assert await count_notes(db) == 0
+    for i in range(3):
+        r = make_result()
+        r.title = f"노트 {i}"
+        await save_note(db_path=db, vault_path=vault, source_type="youtube",
+                        source_url=f"u{i}", result=r, ai_provider="claude")
+    assert await count_notes(db) == 3
+
+
+@pytest.mark.asyncio
 async def test_list_notes_search_matches_title_summary_tags_case_insensitive(db, tmp_path):
     """검색은 title/summary/tags 셋 다 + 대소문자 무시."""
     from services.storage import list_notes

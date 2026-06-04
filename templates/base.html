@@ -65,7 +65,11 @@
            onclick="enterHomeView()"
            class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] font-semibold text-xs cursor-pointer">
           <span class="w-2 h-2 rounded-full bg-[#1F6F4A]"></span>전체 노트
-          <span class="ml-auto bg-[#1F6F4A] text-white text-[10px] px-2 py-0.5 rounded-full font-bold" id="total-count">0</span>
+          <span class="ml-auto bg-[#1F6F4A] text-white text-[10px] px-2 py-0.5 rounded-full font-bold"
+                id="total-count"
+                hx-get="/api/items/count"
+                hx-trigger="load, noteCompleted from:body, noteDeleted from:body"
+                hx-swap="innerHTML">0</span>
         </a>
 
         <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2 pt-3 pb-1">주제별</p>

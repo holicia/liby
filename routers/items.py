@@ -42,6 +42,13 @@ async def get_topics_partial(request: Request):
         {"topics": topics},
     )
 
+@router.get("/count")
+async def get_total_count():
+    from fastapi.responses import PlainTextResponse
+    from services.storage import count_notes
+    n = await count_notes(config.DB_PATH)
+    return PlainTextResponse(str(n))
+
 @router.get("/random")
 async def get_random_notes_partial(request: Request):
     notes = await get_random_notes(config.DB_PATH, n=4)
@@ -81,7 +88,10 @@ async def delete_item(note_id: int):
             Path(md_path).unlink()
         except FileNotFoundError:
             pass
-    return HTMLResponse(content="", status_code=200)
+    resp = HTMLResponse(content="", status_code=200)
+    # 사이드바 #total-count + 미분류·프로젝트 카운트도 같이 갱신
+    resp.headers["HX-Trigger"] = "noteDeleted, projectsChanged"
+    return resp
 
 @router.post("/{note_id}/timeline")
 async def backfill_timeline(request: Request, note_id: int):
