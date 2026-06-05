@@ -1,0 +1,84 @@
+{% if cached %}
+{% set d = cached.digest %}
+<div id="project-digest-panel"
+     class="border border-[#E2E8E4] dark:border-gray-700 rounded-xl p-4 mb-4 bg-[#F9FAFA] dark:bg-gray-800/50">
+  <div class="flex items-start gap-2 mb-3">
+    <span class="text-[10px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mt-0.5">정리</span>
+    <h3 class="flex-1 text-[14px] font-bold text-gray-800 dark:text-gray-100">{{ d.title or '프로젝트 통합 정리' }}</h3>
+    {% if cached.is_stale %}
+    <span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400" title="이 정리 이후 노트가 추가/제거됨">갱신 권장</span>
+    {% endif %}
+    <button hx-post="/api/projects/{{ project_id }}/digest"
+            hx-target="#project-digest-panel"
+            hx-swap="outerHTML"
+            hx-indicator="#digest-spinner"
+            class="text-[10px] text-gray-500 hover:text-[#1F6F4A] dark:hover:text-[#34A66A]"
+            title="다시 정리">↻ 다시 정리</button>
+  </div>
+
+  {% if d.summary %}
+  <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300 mb-3">{{ d.summary }}</p>
+  {% endif %}
+
+  {% if d.insights %}
+  <div class="mb-3">
+    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1">핵심 인사이트</p>
+    <ul class="space-y-1">
+      {% for it in d.insights %}
+      <li class="flex gap-2 text-[13px] text-gray-700 dark:text-gray-300">
+        <span class="text-[#1F6F4A] dark:text-[#34A66A] flex-shrink-0">·</span>
+        <span>{{ it }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if d.clusters %}
+  <div>
+    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1">노트 클러스터</p>
+    <div class="space-y-2">
+      {% for c in d.clusters %}
+      <details class="text-[13px] group">
+        <summary class="cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-baseline gap-2 text-gray-700 dark:text-gray-200">
+          <span class="text-gray-400 text-[10px] transition-transform group-open:rotate-90">▶</span>
+          <span class="font-semibold">{{ c.theme }}</span>
+          <span class="text-[11px] text-gray-400 tabular-nums">{{ c.note_ids | length }}개</span>
+        </summary>
+        <div class="pl-4 mt-1">
+          {% if c.description %}
+          <p class="text-[12px] text-gray-600 dark:text-gray-400 mb-1">{{ c.description }}</p>
+          {% endif %}
+          <div class="flex flex-wrap gap-1.5">
+            {% for nid in c.note_ids %}
+            <button type="button" onclick="openNoteModal({{ nid }})"
+                    class="text-[11px] px-2 py-0.5 rounded bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] hover:bg-[#1F6F4A] hover:text-white transition-colors">#{{ nid }}</button>
+            {% endfor %}
+          </div>
+        </div>
+      </details>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="flex items-center justify-between mt-3 pt-2 border-t border-[#E2E8E4] dark:border-gray-700 text-[10px] text-gray-400">
+    <span>{{ cached.generated_at }} · {{ cached.provider or '?' }} · {{ cached.note_count }}개 노트 기반</span>
+  </div>
+</div>
+{% else %}
+<div id="project-digest-panel" class="border border-dashed border-[#E2E8E4] dark:border-gray-700 rounded-xl p-4 mb-4 flex items-center justify-between">
+  <div>
+    <p class="text-[12px] font-semibold text-gray-700 dark:text-gray-200">📚 프로젝트 노트들을 한눈에</p>
+    <p class="text-[11px] text-gray-400 mt-0.5">이 프로젝트의 모든 노트를 LLM으로 통합 분석합니다 (Claude CLI 기본, 비용 0).</p>
+  </div>
+  <button hx-post="/api/projects/{{ project_id }}/digest"
+          hx-target="#project-digest-panel"
+          hx-swap="outerHTML"
+          hx-indicator="#digest-spinner"
+          class="text-xs bg-[#1F6F4A] text-white rounded-lg px-3 py-1.5 font-semibold hover:opacity-90 transition-opacity whitespace-nowrap">
+    <span class="htmx-indicator" id="digest-spinner">⏳</span>
+    정리하기
+  </button>
+</div>
+{% endif %}

@@ -474,6 +474,90 @@ async def count_notes(db_path: str) -> int:
         return (await cursor.fetchone())[0]
 
 
+# --- 프로젝트 통합 정리(project digest) ---
+
+async def list_notes_for_digest(db_path: str, project_id: int) -> list[dict]:
+    """digest 생성에 필요한 최소 필드만. title/summary/sections heading/tags."""
+    async with aiosqlite.connect(db_path) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute(
+            "SELECT id, title, summary, sections, tags FROM items "
+            "WHERE project_id = ? ORDER BY created_at ASC",
+            (project_id,),
+        )
+        rows = await cur.fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        for k in ("sections", "tags"):
+            if d.get(k):
+                try:
+                    d[k] = json.loads(d[k])
+                except (json.JSONDecodeError, TypeError):
+                    d[k] = []
+            else:
+                d[k] = []
+        out.append(d)
+    return out
+
+
+async def save_project_digest(
+    db_path: str, project_id: int, digest: dict,
+    note_count: int, provider: str, model: str,
+) -> None:
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute(
+            """INSERT INTO project_digests
+                 (project_id, digest_json, note_count, provider, model, generated_at)
+               VALUES (?,?,?,?,?, CURRENT_TIMESTAMP)
+               ON CONFLICT(project_id) DO UPDATE SET
+                 digest_json=excluded.digest_json,
+                 note_count=excluded.note_count,
+                 provider=excluded.provider,
+                 model=excluded.model,
+                 generated_at=CURRENT_TIMESTAMP""",
+            (project_id, json.dumps(digest, ensure_ascii=False), note_count, provider, model),
+        )
+        await db.commit()
+
+
+async def get_project_digest(db_path: str, project_id: int) -> dict | None:
+    """저장된 digest를 dict 형태로. 없으면 None.
+    반환 dict: {digest: {...}, note_count, provider, model, generated_at, is_stale}"""
+    async with aiosqlite.connect(db_path) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute(
+            "SELECT * FROM project_digests WHERE project_id = ?", (project_id,)
+        )
+        row = await cur.fetchone()
+        if not row:
+            return None
+        # 현재 프로젝트 노트 수와 비교해 stale 판정
+        cnt_cur = await db.execute(
+            "SELECT COUNT(*) FROM items WHERE project_id = ?", (project_id,)
+        )
+        current_count = (await cnt_cur.fetchone())[0]
+    try:
+        digest = json.loads(row["digest_json"])
+    except (json.JSONDecodeError, TypeError):
+        digest = {}
+    return {
+        "digest": digest,
+        "note_count": row["note_count"],
+        "provider": row["provider"],
+        "model": row["model"],
+        "generated_at": row["generated_at"],
+        "is_stale": current_count != row["note_count"],
+        "current_note_count": current_count,
+    }
+
+
+async def delete_project_digest(db_path: str, project_id: int) -> None:
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute("DELETE FROM project_digests WHERE project_id = ?", (project_id,))
+        await db.commit()
+
+
 async def set_note_project(db_path: str, note_id: int, project_id: int | None) -> None:
     async with aiosqlite.connect(db_path) as db:
         name = await _project_name(db, project_id) or ""

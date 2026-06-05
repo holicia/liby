@@ -216,12 +216,17 @@ function enterTopicView(topic) {
   document.getElementById('all-notes-link').classList.remove('bg-[#EAF4EE]','text-[#1F6F4A]','dark:bg-[#14291E]','dark:text-[#34A66A]','font-semibold');
   document.getElementById('all-notes-link').classList.add('text-gray-500','dark:text-gray-400');
 }
+function clearDigestHost() {
+  const h = document.getElementById('project-digest-host');
+  if (h) h.innerHTML = '';
+}
 function enterHomeView() {
   const label = document.getElementById('section-label');
   if (label) label.textContent = '최근 업데이트';
   const rec = document.getElementById('recommended-section');
   if (rec) rec.style.display = '';
   htmx.ajax('GET', '/api/items', { target: '#note-list', swap: 'innerHTML' });
+  clearDigestHost();
   // 사이드바 활성 상태 복원
   document.getElementById('all-notes-link').classList.add('bg-[#EAF4EE]','text-[#1F6F4A]','dark:bg-[#14291E]','dark:text-[#34A66A]','font-semibold');
   document.getElementById('all-notes-link').classList.remove('text-gray-500','dark:text-gray-400');
@@ -254,6 +259,12 @@ function enterProjectView(id, name) {
   const rec = document.getElementById('recommended-section');
   if (rec) rec.style.display = 'none';
   htmx.ajax('GET', `/api/items?project_id=${encodeURIComponent(id)}`, { target: '#note-list', swap: 'innerHTML' });
+  // 프로젝트 통합 정리 패널도 같이 불러옴(있으면 결과, 없으면 정리하기 버튼)
+  const digestHost = document.getElementById('project-digest-host');
+  if (digestHost) {
+    htmx.ajax('GET', `/api/projects/${encodeURIComponent(id)}/digest`,
+              { target: '#project-digest-host', swap: 'innerHTML' });
+  }
   deactivateAllNotesLink();
 }
 function enterUnassignedView() {
@@ -262,6 +273,7 @@ function enterUnassignedView() {
   const rec = document.getElementById('recommended-section');
   if (rec) rec.style.display = 'none';
   htmx.ajax('GET', '/api/items?project_id=none', { target: '#note-list', swap: 'innerHTML' });
+  clearDigestHost();
   deactivateAllNotesLink();
 }
 // 변경(POST/PATCH/DELETE) 응답의 HX-Trigger: projectsChanged가
@@ -310,6 +322,9 @@ document.body.addEventListener('htmx:afterSwap', function (e) {
 function closeNoteModal() {
   if (ytPlayer) { try { ytPlayer.destroy(); } catch (e) {} ytPlayer = null; }
   document.getElementById('note-modal').innerHTML = '';
+}
+function openNoteModal(id) {
+  htmx.ajax('GET', `/api/items/${id}/detail`, { target: '#note-modal', swap: 'innerHTML' });
 }
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') closeNoteModal();

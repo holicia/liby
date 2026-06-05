@@ -15,6 +15,9 @@
     <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-[11px]">🔍</span>
   </div>
 </div>
+<!-- 프로젝트 선택 시 통합 정리 패널이 들어오는 영역. 홈/미분류에서는 비어 있음. -->
+<div id="project-digest-host"></div>
+
 <div id="note-list"
      hx-get="/api/items"
      hx-trigger="load, noteCompleted from:body"
