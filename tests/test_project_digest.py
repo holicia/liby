@@ -169,3 +169,38 @@ async def test_route_post_digest_success_caches_and_returns_panel(_isolated, mon
     cached = await storage.get_project_digest(_isolated, pid)
     assert cached["digest"] == fake_digest
     assert cached["provider"] == "claude-cli"
+
+
+@pytest.mark.asyncio
+async def test_digest_panel_renders_index_with_note_titles_and_leftover(_isolated, monkeypatch):
+    """인덱스 섹션에 cluster note title이 보이고, 어떤 cluster에도 안 들어간
+    노트는 '기타' 그룹에 노출돼야 한다."""
+    pid = await _insert_project(_isolated)
+    n1 = await _insert_note(_isolated, pid, "노트A")
+    n2 = await _insert_note(_isolated, pid, "노트B")
+    n3 = await _insert_note(_isolated, pid, "남은 노트")  # 어떤 클러스터에도 없음
+    fake_digest = {
+        "title": "T",
+        "summary": "S",
+        "insights": [],
+        "clusters": [
+            {"theme": "그룹1", "note_ids": [n1, n2], "description": "설명"}
+        ],
+    }
+    async def fake_build(notes, *, adapter, **kw):
+        return fake_digest, adapter
+    monkeypatch.setattr("services.digest.build_project_digest", fake_build)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        resp = await c.post(f"/api/projects/{pid}/digest", data={"provider": "claude-cli"})
+    text = resp.text
+    # 인덱스 라벨
+    assert "📑 인덱스" in text
+    assert "3개 노트" in text
+    # cluster 안 노트 제목 노출
+    assert "노트A" in text
+    assert "노트B" in text
+    # 기타 그룹 + 누락 노트
+    assert "기타" in text
+    assert "남은 노트" in text
+    # openNoteModal 클릭 핸들러 (3개 모두)
+    assert text.count("openNoteModal(") == 3

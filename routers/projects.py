@@ -66,20 +66,34 @@ async def remove_project(request: Request, project_id: int):
 
 # --- 프로젝트 통합 정리(digest) ---
 
-def _render_digest_panel(request: Request, project_id: int,
-                        cached: dict | None) -> "HTMLResponse":
+async def _render_digest_panel(request: Request, project_id: int,
+                               cached: dict | None) -> "HTMLResponse":
     """프로젝트 클릭 시 main 위에 들어가는 정리 패널.
-    cached가 있으면 결과 표시, 없으면 '정리하기' 버튼만."""
+    cached가 있으면 결과 표시, 없으면 '정리하기' 버튼만.
+    인덱스 표시를 위해 프로젝트 노트 id→title 맵을 같이 넘김."""
+    note_titles: dict[int, str] = {}
+    leftover_ids: list[int] = []
+    if cached:
+        # 현재 프로젝트 노트 전체 (id, title)
+        notes = await list_notes_for_digest(config.DB_PATH, project_id)
+        note_titles = {n["id"]: n["title"] for n in notes}
+        # cluster에 포함되지 않은 노트 = 누락 → 별도 그룹
+        assigned = {nid for c in cached["digest"].get("clusters", [])
+                    for nid in c.get("note_ids", [])}
+        leftover_ids = [nid for nid in note_titles if nid not in assigned]
     return templates.TemplateResponse(
         request, "partials/project_digest.html",
-        {"project_id": project_id, "cached": cached},
+        {
+            "project_id": project_id, "cached": cached,
+            "note_titles": note_titles, "leftover_ids": leftover_ids,
+        },
     )
 
 
 @router.get("/{project_id}/digest")
 async def get_digest(request: Request, project_id: int):
     cached = await get_project_digest(config.DB_PATH, project_id)
-    return _render_digest_panel(request, project_id, cached)
+    return await _render_digest_panel(request, project_id, cached)
 
 
 @router.post("/{project_id}/digest")
@@ -111,4 +125,4 @@ async def create_digest(
         note_count=len(notes), provider=provider, model=model,
     )
     cached = await get_project_digest(config.DB_PATH, project_id)
-    return _render_digest_panel(request, project_id, cached)
+    return await _render_digest_panel(request, project_id, cached)

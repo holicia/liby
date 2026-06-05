@@ -16,14 +16,71 @@
             title="다시 정리">↻ 다시 정리</button>
   </div>
 
+  {# 1. 요약 #}
   {% if d.summary %}
-  <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300 mb-3">{{ d.summary }}</p>
+  <div class="mb-3">
+    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1">요약</p>
+    <p class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">{{ d.summary }}</p>
+  </div>
   {% endif %}
 
-  {% if d.insights %}
+  {# 2. 인덱스 (cluster를 인덱스 형태로 — 그룹별 노트 제목 나열) #}
+  {% if d.clusters or leftover_ids %}
   <div class="mb-3">
-    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1">핵심 인사이트</p>
-    <ul class="space-y-1">
+    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1">📑 인덱스 ({{ note_titles | length }}개 노트)</p>
+    <div class="space-y-1.5">
+      {% for c in d.clusters %}
+      <details class="text-[13px] group" open>
+        <summary class="cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-baseline gap-2 text-gray-700 dark:text-gray-200">
+          <span class="text-gray-400 text-[10px] transition-transform group-open:rotate-90">▶</span>
+          <span class="font-semibold">{{ c.theme }}</span>
+          <span class="text-[11px] text-gray-400 tabular-nums">{{ c.note_ids | length }}개</span>
+        </summary>
+        <div class="pl-5 mt-1 space-y-0.5">
+          {% if c.description %}
+          <p class="text-[11px] text-gray-500 dark:text-gray-400 italic mb-1">{{ c.description }}</p>
+          {% endif %}
+          {% for nid in c.note_ids %}
+          {% if note_titles[nid] %}
+          <button type="button" onclick="openNoteModal({{ nid }})"
+                  class="w-full text-left text-[12px] text-gray-700 dark:text-gray-300 hover:text-[#1F6F4A] dark:hover:text-[#34A66A] hover:bg-[#EAF4EE] dark:hover:bg-[#14291E] rounded px-2 py-0.5 truncate transition-colors">
+            <span class="text-gray-400 mr-1.5 tabular-nums">#{{ nid }}</span>{{ note_titles[nid] }}
+          </button>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+
+      {# 누락 노트(LLM이 어느 클러스터에도 안 넣은 것)는 별도 그룹으로 #}
+      {% if leftover_ids %}
+      <details class="text-[13px] group">
+        <summary class="cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-baseline gap-2 text-gray-500 dark:text-gray-400">
+          <span class="text-gray-400 text-[10px] transition-transform group-open:rotate-90">▶</span>
+          <span class="font-semibold">기타</span>
+          <span class="text-[11px] text-gray-400 tabular-nums">{{ leftover_ids | length }}개</span>
+        </summary>
+        <div class="pl-5 mt-1 space-y-0.5">
+          {% for nid in leftover_ids %}
+          <button type="button" onclick="openNoteModal({{ nid }})"
+                  class="w-full text-left text-[12px] text-gray-700 dark:text-gray-300 hover:text-[#1F6F4A] dark:hover:text-[#34A66A] hover:bg-[#EAF4EE] dark:hover:bg-[#14291E] rounded px-2 py-0.5 truncate transition-colors">
+            <span class="text-gray-400 mr-1.5 tabular-nums">#{{ nid }}</span>{{ note_titles[nid] }}
+          </button>
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# 3. 핵심 인사이트 (옵션 — details로 접을 수 있게) #}
+  {% if d.insights %}
+  <details class="mb-1">
+    <summary class="cursor-pointer list-none [&::-webkit-details-marker]:hidden text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1 hover:text-[#1F6F4A] dark:hover:text-[#34A66A]">
+      💡 핵심 인사이트 {{ d.insights | length }}
+    </summary>
+    <ul class="space-y-1 mt-1">
       {% for it in d.insights %}
       <li class="flex gap-2 text-[13px] text-gray-700 dark:text-gray-300">
         <span class="text-[#1F6F4A] dark:text-[#34A66A] flex-shrink-0">·</span>
@@ -31,35 +88,7 @@
       </li>
       {% endfor %}
     </ul>
-  </div>
-  {% endif %}
-
-  {% if d.clusters %}
-  <div>
-    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1">노트 클러스터</p>
-    <div class="space-y-2">
-      {% for c in d.clusters %}
-      <details class="text-[13px] group">
-        <summary class="cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-baseline gap-2 text-gray-700 dark:text-gray-200">
-          <span class="text-gray-400 text-[10px] transition-transform group-open:rotate-90">▶</span>
-          <span class="font-semibold">{{ c.theme }}</span>
-          <span class="text-[11px] text-gray-400 tabular-nums">{{ c.note_ids | length }}개</span>
-        </summary>
-        <div class="pl-4 mt-1">
-          {% if c.description %}
-          <p class="text-[12px] text-gray-600 dark:text-gray-400 mb-1">{{ c.description }}</p>
-          {% endif %}
-          <div class="flex flex-wrap gap-1.5">
-            {% for nid in c.note_ids %}
-            <button type="button" onclick="openNoteModal({{ nid }})"
-                    class="text-[11px] px-2 py-0.5 rounded bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] hover:bg-[#1F6F4A] hover:text-white transition-colors">#{{ nid }}</button>
-            {% endfor %}
-          </div>
-        </div>
-      </details>
-      {% endfor %}
-    </div>
-  </div>
+  </details>
   {% endif %}
 
   <div class="flex items-center justify-between mt-3 pt-2 border-t border-[#E2E8E4] dark:border-gray-700 text-[10px] text-gray-400">
