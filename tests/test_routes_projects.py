@@ -16,6 +16,27 @@ async def test_get_projects_renders_list():
 
 
 @pytest.mark.asyncio
+async def test_project_row_uses_data_attributes_not_inline_tojson_in_onclick():
+    """프로젝트 row click handler가 한국어 이름 때문에 onclick attribute 안의
+    inner quote로 잘리지 않게 data-* 패턴을 써야 한다. tojson 호출이 onclick
+    안에 들어가 있던 옛 패턴은 한국어 이름에서 attribute가 깨졌었다."""
+    with patch("routers.projects.list_projects", return_value=[
+              {"id": 2, "name": "투자", "count": 6}]), \
+         patch("routers.projects.unassigned_count", return_value=0):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/projects")
+    assert resp.status_code == 200
+    # data 속성으로 id/name 전달
+    assert 'data-project-id="2"' in resp.text
+    assert 'data-project-name="투자"' in resp.text
+    # enterProjectView 호출은 dataset을 통해
+    assert "enterProjectView(this.dataset.projectId, this.dataset.projectName)" in resp.text
+    # 옛 깨지는 패턴(tojson을 onclick 인자에 직접 박는 것)이 다시 들어오지 않도록
+    assert 'enterProjectView(2, "투자"' not in resp.text
+    assert 'enterProjectView(2, "\\u' not in resp.text
+
+
+@pytest.mark.asyncio
 async def test_post_project_creates():
     with patch("routers.projects.create_project", return_value=1) as mock_create, \
          patch("routers.projects.list_projects", return_value=[]), \

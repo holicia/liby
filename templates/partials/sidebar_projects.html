@@ -1,6 +1,7 @@
 {% for p in projects %}
 <div class="group relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-500 dark:text-gray-400 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] dark:hover:bg-[#14291E] dark:hover:text-[#34A66A] cursor-pointer transition-colors"
-     onclick="enterProjectView({{ p.id }}, {{ p.name | tojson }})">
+     data-project-id="{{ p.id }}" data-project-name="{{ p.name }}"
+     onclick="enterProjectView(this.dataset.projectId, this.dataset.projectName)">
   <span class="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></span>
   <span class="truncate flex-1">{{ p.name }}</span>
   <span class="text-gray-400 text-[11px] tabular-nums flex-shrink-0">{{ p.count }}</span>
@@ -8,10 +9,10 @@
   <div class="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity bg-[#EAF4EE] dark:bg-[#14291E] pl-2 pr-1 rounded">
     <button class="text-gray-400 hover:text-[#1F6F4A] px-1"
             title="이름 변경"
-            onclick="event.stopPropagation(); renameProject({{ p.id }}, {{ p.name | tojson }})">✎</button>
+            onclick="event.stopPropagation(); const p = this.closest('[data-project-id]'); renameProject(p.dataset.projectId, p.dataset.projectName)">✎</button>
     <button class="text-gray-400 hover:text-red-500 px-1"
             title="삭제"
-            onclick="event.stopPropagation(); deleteProject({{ p.id }}, {{ p.name | tojson }})">✕</button>
+            onclick="event.stopPropagation(); const p = this.closest('[data-project-id]'); deleteProject(p.dataset.projectId, p.dataset.projectName)">✕</button>
   </div>
 </div>
 {% endfor %}
