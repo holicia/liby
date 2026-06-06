@@ -2,11 +2,12 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from httpx import AsyncClient, ASGITransport
 from main import app
+import routers.youtube as yt
 
 @pytest.mark.asyncio
 async def test_analyze_youtube_returns_task_card_fragment():
     # POST는 즉시 큐 작업 카드(task_card)를 반환하고 실제 분석은 워커가 비동기 처리.
-    async def fake_enqueue(task, fn):
+    async def fake_enqueue(task, fn=None):
         return None
     with patch("routers.youtube.enqueue", new=fake_enqueue), \
          patch("routers.youtube.get_provider"):
@@ -27,7 +28,7 @@ async def test_analyze_youtube_missing_url_returns_422():
 
 @pytest.mark.asyncio
 async def test_youtube_accepts_project_id():
-    async def fake_enqueue(task, fn):
+    async def fake_enqueue(task, fn=None):
         return None
     with patch("routers.youtube.enqueue", new=fake_enqueue), \
          patch("routers.youtube.get_provider"):
@@ -41,8 +42,8 @@ async def test_youtube_accepts_project_id():
 @pytest.mark.asyncio
 async def test_youtube_do_work_generates_timeline():
     captured = {}
-    async def fake_enqueue(task, fn):
-        captured["fn"] = fn
+    async def fake_enqueue(task, fn=None):
+        captured["task"] = task
 
     fake_ai = AsyncMock()
     fake_ai.name.return_value = "claude"
@@ -62,15 +63,16 @@ async def test_youtube_do_work_generates_timeline():
                return_value=[{"t": 0, "label": "C"}]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             await c.post("/api/youtube", data={"url": "https://youtu.be/abc", "provider": "claude", "mode": "quick"})
+        do_work = yt._build_youtube_do_work(captured["task"].spec)
         task = MagicMock(); task.note_id = None
-        await captured["fn"](task)
+        await do_work(task)
     assert mock_save.call_args.kwargs.get("timeline") == [{"t": 0, "label": "C"}]
 
 @pytest.mark.asyncio
 async def test_youtube_detailed_passes_timestamped_transcript():
     captured = {}
-    async def fake_enqueue(task, fn):
-        captured["fn"] = fn
+    async def fake_enqueue(task, fn=None):
+        captured["task"] = task
     fake_ai = AsyncMock()
     fake_ai.name.return_value = "claude"
     from services.ai.base import SummaryResult
@@ -89,8 +91,9 @@ async def test_youtube_detailed_passes_timestamped_transcript():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             await c.post("/api/youtube", data={"url": "https://youtu.be/abc",
                                                "provider": "claude", "mode": "detailed"})
+        do_work = yt._build_youtube_do_work(captured["task"].spec)
         task = MagicMock(); task.note_id = None
-        await captured["fn"](task)
+        await do_work(task)
     arg0 = fake_ai.summarize.call_args.args[0]
     assert "[0:00]" in arg0 and "안녕" in arg0  # 평문 PLAIN이 아니라 타임스탬프 자막 전달
 
@@ -98,7 +101,7 @@ async def test_youtube_detailed_passes_timestamped_transcript():
 @pytest.mark.asyncio
 async def test_youtube_uses_video_title_for_queue_card():
     captured = {}
-    async def fake_enqueue(task, fn):
+    async def fake_enqueue(task, fn=None):
         captured["task"] = task
     with patch("routers.youtube.enqueue", new=fake_enqueue), \
          patch("routers.youtube.get_provider"), \
@@ -113,7 +116,7 @@ async def test_youtube_uses_video_title_for_queue_card():
 @pytest.mark.asyncio
 async def test_youtube_falls_back_to_url_when_title_unavailable():
     captured = {}
-    async def fake_enqueue(task, fn):
+    async def fake_enqueue(task, fn=None):
         captured["task"] = task
     url = "https://youtu.be/xyz"
     with patch("routers.youtube.enqueue", new=fake_enqueue), \
@@ -129,7 +132,7 @@ async def test_youtube_falls_back_to_url_when_title_unavailable():
 @pytest.mark.asyncio
 async def test_youtube_quick_passes_timestamped_transcript_and_paragraphs():
     captured = {}
-    async def fake_enqueue(task, fn): captured["fn"] = fn
+    async def fake_enqueue(task, fn=None): captured["task"] = task
     fake_ai = AsyncMock(); fake_ai.name.return_value = "claude"
     from services.ai.base import SummaryResult
     fake_ai.summarize.return_value = SummaryResult(
@@ -149,8 +152,9 @@ async def test_youtube_quick_passes_timestamped_transcript_and_paragraphs():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             await c.post("/api/youtube", data={"url": "https://youtu.be/abc",
                                                "provider": "claude", "mode": "quick"})
+        do_work = yt._build_youtube_do_work(captured["task"].spec)
         task = MagicMock(); task.note_id = None
-        await captured["fn"](task)
+        await do_work(task)
     # 타임스탬프 자막을 summarize 입력으로 사용
     assert "[0:00]" in fake_ai.summarize.call_args.args[0]
     # save_note는 result.paragraphs를 직접 사용 (kwarg 없음)
@@ -162,7 +166,7 @@ async def test_youtube_quick_passes_timestamped_transcript_and_paragraphs():
 async def test_youtube_pipes_chapters_with_images_to_save_note():
     """capture_chapter_screenshots이 추가한 image 키가 save_note의 timeline kwarg에 그대로 전달."""
     captured = {}
-    async def fake_enqueue(task, fn): captured["fn"] = fn
+    async def fake_enqueue(task, fn=None): captured["task"] = task
     fake_ai = AsyncMock(); fake_ai.name.return_value = "claude"
     from services.ai.base import SummaryResult
     fake_ai.summarize.return_value = SummaryResult(
@@ -188,8 +192,9 @@ async def test_youtube_pipes_chapters_with_images_to_save_note():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             await c.post("/api/youtube", data={"url": "https://youtu.be/abc",
                                                "provider": "claude", "mode": "quick"})
+        do_work = yt._build_youtube_do_work(captured["task"].spec)
         task = MagicMock(); task.note_id = None
-        await captured["fn"](task)
+        await do_work(task)
     timeline_arg = mock_save.call_args.kwargs["timeline"]
     assert timeline_arg == [
         {"t": 0, "label": "A", "image": "제목/ch-1.jpg"},
@@ -201,7 +206,7 @@ async def test_youtube_pipes_chapters_with_images_to_save_note():
 async def test_youtube_pipes_segments_to_save_note():
     """extract 결과의 segments가 save_note의 segments kwarg로 전달."""
     captured = {}
-    async def fake_enqueue(task, fn): captured["fn"] = fn
+    async def fake_enqueue(task, fn=None): captured["task"] = task
     fake_ai = AsyncMock(); fake_ai.name.return_value = "claude"
     from services.ai.base import SummaryResult
     fake_ai.summarize.return_value = SummaryResult(
@@ -223,8 +228,9 @@ async def test_youtube_pipes_segments_to_save_note():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             await c.post("/api/youtube", data={"url": "https://youtu.be/abc",
                                                "provider": "claude", "mode": "quick"})
+        do_work = yt._build_youtube_do_work(captured["task"].spec)
         task = MagicMock(); task.note_id = None
-        await captured["fn"](task)
+        await do_work(task)
     assert mock_save.call_args.kwargs["segments"] == segments_payload
 
 
@@ -232,7 +238,7 @@ async def test_youtube_pipes_segments_to_save_note():
 async def test_youtube_detailed_uses_sections_as_timeline():
     """detailed mode면 resolve_chapters 결과를 무시하고 sections heading+t를 timeline으로."""
     captured = {}
-    async def fake_enqueue(task, fn): captured["fn"] = fn
+    async def fake_enqueue(task, fn=None): captured["task"] = task
     fake_ai = AsyncMock(); fake_ai.name.return_value = "claude"
     from services.ai.base import SummaryResult
     fake_ai.summarize.return_value = SummaryResult(
@@ -265,8 +271,9 @@ async def test_youtube_detailed_uses_sections_as_timeline():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             await c.post("/api/youtube", data={"url": "https://youtu.be/abc",
                                                "provider": "claude", "mode": "detailed"})
+        do_work = yt._build_youtube_do_work(captured["task"].spec)
         task = MagicMock(); task.note_id = None
-        await captured["fn"](task)
+        await do_work(task)
     timeline_arg = mock_save.call_args.kwargs["timeline"]
     assert timeline_arg == [
         {"t": 10, "label": "1. 도입"},
@@ -285,7 +292,7 @@ async def test_youtube_detailed_uses_sections_as_timeline():
 async def test_youtube_detailed_fallbacks_t_for_sections_missing_t():
     """detailed sections 중 일부에 t가 없으면 직전 sec t + 30s로 fallback해 timeline에 포함."""
     captured = {}
-    async def fake_enqueue(task, fn): captured["fn"] = fn
+    async def fake_enqueue(task, fn=None): captured["task"] = task
     fake_ai = AsyncMock(); fake_ai.name.return_value = "claude"
     from services.ai.base import SummaryResult
     fake_ai.summarize.return_value = SummaryResult(
@@ -314,8 +321,9 @@ async def test_youtube_detailed_fallbacks_t_for_sections_missing_t():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             await c.post("/api/youtube", data={"url": "https://youtu.be/abc",
                                                "provider": "claude", "mode": "detailed"})
+        do_work = yt._build_youtube_do_work(captured["task"].spec)
         task = MagicMock(); task.note_id = None
-        await captured["fn"](task)
+        await do_work(task)
     timeline = mock_save.call_args.kwargs["timeline"]
     # 4개 모두 포함, t는 단조 증가 (fallback = last_t + 30)
     assert len(timeline) == 4
