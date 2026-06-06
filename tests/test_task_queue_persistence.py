@@ -235,3 +235,45 @@ async def test_restore_skips_unknown_source_type(_isolated):
     restored = await tq.restore_pending_tasks(_isolated)
     assert restored == 0
     assert "alien" not in tq._tasks
+
+
+@pytest.mark.asyncio
+async def test_text_builder_registered_and_reconstructs(_isolated):
+    """routers.text import 시 'text' builder가 등록되고, spec으로 do_work를 만든다."""
+    import routers.text  # noqa: F401  (import 부수효과로 register_builder 실행)
+    from services.ai.base import SummaryResult
+    from unittest.mock import AsyncMock, patch
+
+    # _isolated fixture가 매 테스트 _reset_for_tests()로 _BUILDERS를 비우는데
+    # routers.text는 import 캐시되어 모듈 레벨 register_builder가 재실행되지 않는다.
+    # 실제 builder 함수로 명시 재등록해 진짜 동작을 검증한다.
+    if "text" not in tq._BUILDERS:
+        tq.register_builder("text", routers.text._build_text_do_work)
+
+    assert "text" in tq._BUILDERS
+    spec = {"source_type": "text", "content": "본문 텍스트",
+            "provider": "claude-cli", "mode": "quick", "project_id": None}
+    do_work = tq._BUILDERS["text"](spec)
+
+    fake = AsyncMock(return_value=SummaryResult(
+        title="제목", language="ko", word_count=1, reading_time_min=1,
+        sections=[], summary="s", key_points=[], tags=[],
+        suggested_topic="", summary_mode="quick",
+        paragraphs=[{"text": "x", "refs": []}], cost_usd=0.0, models_used=["claude"],
+    ))
+    with patch("routers.text.get_provider") as gp, \
+         patch("routers.text.save_note", new_callable=AsyncMock, return_value=7), \
+         patch("routers.text.record_api_cost", new_callable=AsyncMock), \
+         patch("routers.text.get_db_topics") as topics:
+        gp.return_value.summarize = fake
+        gp.return_value.name = lambda: "claude-cli"
+        topics.return_value.__aenter__.return_value = []
+        topics.return_value.__aexit__.return_value = False
+
+        class T:  # 가벼운 task 더블
+            title = ""; progress = ""; note_id = None
+        t = T()
+        await do_work(t)
+    fake.assert_awaited()
+    assert t.note_id == 7
+    assert t.title == "제목"
