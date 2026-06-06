@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 _POLL_INTERVAL = 2.0
 _POLL_MAX_TICKS = 300  # 약 10분 (2초 * 300)
-_DETAIL_KEYWORDS = ("상세", "/detailed", "detailed")
+_DETAIL_KEYWORDS = ("상세", "/detailed")
 
 
 def _is_authorized(author_id) -> bool:
@@ -20,10 +20,15 @@ def _is_authorized(author_id) -> bool:
 
 
 def _parse_mode(text: str) -> tuple[str, str]:
-    """선두 키워드로 모드 판별. 반환 (mode, 키워드 제거된 텍스트)."""
+    """선두 키워드 뒤에 공백이 와야 detailed 명령으로 인정한다.
+    'detailedfoo'·'상세분석' 같은 일반 단어를 오인하지 않도록 경계를 둔다.
+    반환 (mode, 키워드 제거된 텍스트)."""
+    lowered = text.lower()
     for kw in _DETAIL_KEYWORDS:
-        if text.lower().startswith(kw):
-            return "detailed", text[len(kw):].strip() or text
+        if lowered.startswith(kw) and text[len(kw):][:1].isspace():
+            stripped = text[len(kw):].strip()
+            if stripped:
+                return "detailed", stripped
     return "quick", text
 
 
