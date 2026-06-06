@@ -15,6 +15,12 @@ BRIDGE_TIMEOUT_SEC: int = int(os.getenv("BRIDGE_TIMEOUT_SEC", "900"))
 VAULT_PATH: str = os.getenv("VAULT_PATH", "./vault")
 DB_PATH: str = os.getenv("DB_PATH", "./liby.db")
 
+# Discord 봇 + 외부 열람(Tailscale). 토큰 비어 있으면 봇 비활성.
+DISCORD_BOT_TOKEN: str = os.getenv("DISCORD_BOT_TOKEN", "")
+DISCORD_ALLOWED_USER_ID: str = os.getenv("DISCORD_ALLOWED_USER_ID", "")
+PUBLIC_BASE_URL: str = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:8000")
+BOT_API_TOKEN: str = os.getenv("BOT_API_TOKEN", "")
+
 CLAUDE_MODELS: dict[str, str] = {
     "tier1": "claude-haiku-4-5",
     "tier2": "claude-sonnet-4-6",
