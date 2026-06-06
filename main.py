@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="liby", lifespan=lifespan)
 
-from routers import youtube, pdf, items, settings, code, tasks, text, projects, markdown
+from routers import youtube, pdf, items, settings, code, tasks, text, projects, markdown, bot
 app.include_router(youtube.router)
 app.include_router(pdf.router)
 app.include_router(items.router)
@@ -34,6 +34,7 @@ app.include_router(tasks.router)
 app.include_router(text.router)
 app.include_router(projects.router)
 app.include_router(markdown.router)
+app.include_router(bot.router)
 
 os.makedirs(config.VAULT_PATH, exist_ok=True)
 app.mount("/vault", StaticFiles(directory=config.VAULT_PATH), name="vault")
