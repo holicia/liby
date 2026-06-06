@@ -1,28 +1,37 @@
+from contextlib import asynccontextmanager
 from fastapi import APIRouter, Form, Request
+import aiosqlite
 import config
 from services.ai import get_provider
 from services.storage import save_note, record_api_cost
-from services.task_queue import new_task, enqueue, queue_meta
-from routers.youtube import get_db_topics
+from services.task_queue import new_task, enqueue, queue_meta, register_builder
 from routers._utils import parse_project_id
 from templates_env import templates
 
 router = APIRouter(prefix="/api/text", tags=["text"])
 
-@router.post("")
-async def analyze_text(
-    request: Request,
-    content: str = Form(...),
-    provider: str = Form(config.DEFAULT_AI_PROVIDER),
-    mode: str = Form("quick"),
-    project_id: str = Form(""),
-):
-    content = content.strip()
-    pid = parse_project_id(project_id)
-    task = new_task("text", content[:40])
-    ai = get_provider(provider)
+
+@asynccontextmanager
+async def get_db_topics():
+    try:
+        async with aiosqlite.connect(config.DB_PATH) as db:
+            cursor = await db.execute("SELECT DISTINCT topic FROM items WHERE topic IS NOT NULL")
+            rows = await cursor.fetchall()
+        topics = [r[0] for r in rows]
+    except Exception:
+        topics = []
+    yield topics
+
+
+def _build_text_do_work(spec: dict):
+    """spec → 분석 코루틴. task_queue가 영구화·재시도 시 이 builder로 재구성한다."""
+    content = spec["content"]
+    provider = spec["provider"]
+    mode = spec.get("mode", "quick")
+    pid = spec.get("project_id")
 
     async def do_work(t):
+        ai = get_provider(provider)
         t.progress = "AI 분석 중..."
         async with get_db_topics() as topics:
             result = await ai.summarize(content, "text", mode, topics)
@@ -41,5 +50,24 @@ async def analyze_text(
         )
         t.note_id = note_id
 
-    await enqueue(task, do_work)
+    return do_work
+
+
+register_builder("text", _build_text_do_work)
+
+
+@router.post("")
+async def analyze_text(
+    request: Request,
+    content: str = Form(...),
+    provider: str = Form(config.DEFAULT_AI_PROVIDER),
+    mode: str = Form("quick"),
+    project_id: str = Form(""),
+):
+    content = content.strip()
+    pid = parse_project_id(project_id)
+    spec = {"source_type": "text", "content": content, "provider": provider,
+            "mode": mode, "project_id": pid}
+    task = new_task("text", content[:40], spec=spec)
+    await enqueue(task)  # coro_fn 생략 → builder 재구성, 영구화·재시도
     return templates.TemplateResponse(request, "partials/task_card.html", {"task": task, **queue_meta(task)})

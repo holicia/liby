@@ -14,11 +14,9 @@ def _ensure_token(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_text_route_accepts_claude_cli_provider():
-    """POST /api/text 가 provider=claude-cli 폼 값을 받아 BridgeProvider로 라우팅.
-
-    라우터는 enqueue 후 즉시 task_card를 반환하므로 큐에 들어간 do_work를
-    직접 실행해 BridgeProvider.summarize가 호출되는지 확인한다.
-    """
+    """POST /api/text 가 provider=claude-cli를 받아 spec을 만들고 enqueue한다.
+    builder로 재구성한 do_work가 BridgeProvider.summarize를 호출하는지 확인."""
+    import routers.text as text_mod
     fake_summarize = AsyncMock(return_value=SummaryResult(
         title="t", language="ko", word_count=1, reading_time_min=1,
         sections=[], summary="s", key_points=[], tags=[],
@@ -27,8 +25,8 @@ async def test_text_route_accepts_claude_cli_provider():
         cost_usd=0.0, models_used=["claude"],
     ))
     captured = {}
-    async def fake_enqueue(task, fn):
-        captured["fn"] = fn
+    async def fake_enqueue(task, coro_fn=None):
+        captured["task"] = task
 
     with patch("services.ai.bridge.BridgeProvider.summarize", new=fake_summarize), \
          patch("routers.text.enqueue", new=fake_enqueue), \
@@ -43,7 +41,10 @@ async def test_text_route_accepts_claude_cli_provider():
                 "provider": "claude-cli", "mode": "quick",
             })
         assert resp.status_code == 200
-        # 큐에 들어간 do_work를 직접 실행 → BridgeProvider.summarize 호출됨
-        task = MagicMock(); task.note_id = None
-        await captured["fn"](task)
+        # spec으로 do_work 재구성 후 직접 실행 → summarize 호출됨
+        task = captured["task"]
+        assert task.spec["provider"] == "claude-cli"
+        do_work = text_mod._build_text_do_work(task.spec)
+        t = MagicMock(); t.note_id = None
+        await do_work(t)
     fake_summarize.assert_awaited()
