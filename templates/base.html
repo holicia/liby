@@ -54,6 +54,8 @@
 
   <!-- SIDEBAR -->
   <aside id="sidebar" style="width:208px" class="fixed md:static inset-y-0 left-0 z-40 -translate-x-full md:translate-x-0 transition-transform duration-200 border-r border-[#E2E8E4] bg-white flex flex-col dark:bg-gray-900 dark:border-gray-700 flex-shrink-0">
+    <button onclick="closeSidebar()" aria-label="메뉴 닫기"
+            class="md:hidden self-end m-2 text-xl text-gray-400 hover:text-[#1F6F4A] dark:hover:text-[#34A66A]">✕</button>
     <div class="flex-1 overflow-y-auto p-3 space-y-0.5">
       <div class="flex gap-1 p-1 mb-2 bg-[#F3F5F4] dark:bg-gray-800 rounded-lg text-[11px]">
         <button id="mode-topic-btn" onclick="setSidebarMode('topic')"
@@ -138,7 +140,7 @@
   if (!sb || !rz) return;
   const clamp = w => Math.min(480, Math.max(160, w));
   const saved = parseInt(localStorage.getItem('sidebarWidth'), 10);
-  if (saved) sb.style.width = clamp(saved) + 'px';
+  if (saved && window.innerWidth >= 768) sb.style.width = clamp(saved) + 'px';
   let dragging = false;
   rz.addEventListener('mousedown', e => { dragging = true; document.body.style.userSelect = 'none'; e.preventDefault(); });
   document.addEventListener('mousemove', e => {
@@ -158,6 +160,8 @@ function toggleSidebar() {
   const opening = sb.classList.contains('-translate-x-full');
   sb.classList.toggle('-translate-x-full', !opening);
   ov.classList.toggle('hidden', !opening);
+  const tg = document.getElementById('sidebar-toggle');
+  if (tg) tg.setAttribute('aria-label', opening ? '메뉴 닫기' : '메뉴 열기');
 }
 function closeSidebar() {
   const sb = document.getElementById('sidebar');
