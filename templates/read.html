@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ note.title }} — liby</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
@@ -46,33 +47,16 @@
 </header>
 
 <!-- 본문 좌우 분할 -->
-<div class="md:grid md:grid-cols-5 md:gap-4 p-4 max-w-screen-xl mx-auto">
-  <!-- 좌측: 영상 + 트랜스크립트 (sticky) -->
-  <aside class="md:col-span-2 md:sticky md:top-4 md:self-start md:max-h-[calc(100vh-5rem)] md:overflow-y-auto">
-    <div class="aspect-video bg-black rounded-lg overflow-hidden mb-3">
+<div class="flex flex-col md:grid md:grid-cols-5 md:gap-4 p-4 max-w-screen-xl mx-auto">
+  <!-- 영상: 모바일 1번, 데스크톱 좌상단 sticky -->
+  <div class="order-1 md:col-span-2 md:col-start-1 md:row-start-1 md:sticky md:top-4 md:self-start">
+    <div class="aspect-video bg-black rounded-lg overflow-hidden">
       <div id="yt-player" data-video-id="{{ video_id }}" class="w-full h-full"></div>
     </div>
-    {% set seg_list = note.transcript_segments if note.transcript_segments is not string else (note.transcript_segments | fromjson) %}
-    {% if seg_list %}
-    <h3 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2 mt-4">트랜스크립트</h3>
-    <ul class="space-y-0.5 text-[12px]">
-      {% for s in seg_list %}
-      <li>
-        <button type="button" onclick="ytSeek({{ s.t }})"
-                class="w-full text-left flex gap-2 text-gray-700 dark:text-gray-300 hover:bg-[#EAF4EE] dark:hover:bg-[#14291E] rounded px-2 py-1 transition-colors">
-          <span class="text-[#1F6F4A] dark:text-[#34A66A] font-mono flex-shrink-0">{{ "%d:%02d"|format(s.t // 60, s.t % 60) }}</span>
-          <span>{{ s.text }}</span>
-        </button>
-      </li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <p class="text-[11px] text-gray-400 mt-4">트랜스크립트 없음</p>
-    {% endif %}
-  </aside>
+  </div>
 
   <!-- 우측: 본문 + 각주 -->
-  <article class="md:col-span-3">
+  <article class="order-2 md:col-span-3 md:col-start-3 md:row-start-1 md:row-span-2 mt-4 md:mt-0">
     <!-- 요약 -->
     <section class="mb-6">
       <h2 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">요약</h2>
@@ -143,6 +127,27 @@
     </section>
     {% endif %}
   </article>
+
+  <!-- 트랜스크립트: 모바일 3번(맨 아래), 데스크톱 좌하단 -->
+  <aside class="order-3 md:col-span-2 md:col-start-1 md:row-start-2 mt-4 md:mt-0">
+    {% set seg_list = note.transcript_segments if note.transcript_segments is not string else (note.transcript_segments | fromjson) %}
+    {% if seg_list %}
+    <h3 class="text-[11px] font-bold uppercase tracking-widest text-[#1F6F4A] dark:text-[#34A66A] mb-2">트랜스크립트</h3>
+    <ul class="space-y-0.5 text-[12px]">
+      {% for s in seg_list %}
+      <li>
+        <button type="button" onclick="ytSeek({{ s.t }})"
+                class="w-full text-left flex gap-2 text-gray-700 dark:text-gray-300 hover:bg-[#EAF4EE] dark:hover:bg-[#14291E] rounded px-2 py-1 transition-colors">
+          <span class="text-[#1F6F4A] dark:text-[#34A66A] font-mono flex-shrink-0">{{ "%d:%02d"|format(s.t // 60, s.t % 60) }}</span>
+          <span>{{ s.text }}</span>
+        </button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-[11px] text-gray-400">트랜스크립트 없음</p>
+    {% endif %}
+  </aside>
 </div>
 
 <script>

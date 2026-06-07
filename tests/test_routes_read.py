@@ -45,3 +45,26 @@ async def test_read_view_redirects_when_note_missing():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False) as c:
             resp = await c.get("/api/items/999/read")
     assert resp.status_code in (302, 307, 404)
+
+
+@pytest.mark.asyncio
+async def test_read_view_has_viewport_meta():
+    """모바일 렌더링을 위해 read.html에 viewport 메타가 있어야 한다."""
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=YT_NOTE):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/read")
+    assert resp.status_code == 200
+    assert 'name="viewport"' in resp.text
+    assert "width=device-width" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_read_view_mobile_reorder_container():
+    """모바일 재배치용 flex/grid 컨테이너 + 트랜스크립트 order-3 적용."""
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=YT_NOTE):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/read")
+    assert resp.status_code == 200
+    assert "flex flex-col md:grid" in resp.text
+    assert "order-3" in resp.text            # 트랜스크립트가 모바일 맨 아래
+    assert "안녕" in resp.text and "코끼리" in resp.text

@@ -6,7 +6,7 @@
 <div class="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto"
      id="note-modal-overlay"
      onclick="if(event.target===this){closeNoteModal()}">
-  <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl my-8 p-6 relative shadow-2xl">
+  <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl my-4 md:my-8 p-4 md:p-6 relative shadow-2xl">
     <!-- 삭제 -->
     <button hx-delete="/api/items/{{ note.id }}"
             hx-confirm="이 노트를 삭제하시겠어요? .md 파일도 함께 사라집니다."
@@ -26,7 +26,7 @@
             class="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 transition-colors text-sm font-bold">✕</button>
 
     <!-- 헤더 -->
-    <div class="flex items-start gap-3 mb-4 pr-8">
+    <div class="flex items-start gap-3 mb-4 pr-24">
       <span class="flex-shrink-0 bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] text-[10px] font-bold px-2 py-1 rounded border border-[#A8CBB2] dark:border-[#2D6B4A]">{{ note.type | upper }}</span>
       <div>
         <h2 class="font-bold text-[15px] text-[#1F2937] dark:text-gray-100 leading-snug">{{ note.title }}</h2>

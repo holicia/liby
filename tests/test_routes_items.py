@@ -374,3 +374,13 @@ async def test_modal_shows_full_screen_link_for_youtube():
     assert resp.status_code == 200
     assert 'href="/api/items/1/read"' in resp.text
     assert "📖" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_modal_uses_responsive_padding():
+    """모달 카드가 모바일에서 좁은 패딩(p-4)·데스크톱 p-6을 쓴다."""
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert "p-4 md:p-6" in resp.text
