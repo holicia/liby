@@ -16,8 +16,9 @@ VAULT_PATH: str = os.getenv("VAULT_PATH", "./vault")
 DB_PATH: str = os.getenv("DB_PATH", "./liby.db")
 
 # Discord 봇 + 외부 열람(Tailscale). 토큰 비어 있으면 봇 비활성.
-DISCORD_BOT_TOKEN: str = os.getenv("DISCORD_BOT_TOKEN", "")
-DISCORD_ALLOWED_USER_ID: str = os.getenv("DISCORD_ALLOWED_USER_ID", "")
+# 권한은 전용 비공개 채널 기준 — 지정 채널(DISCORD_LIBY_CHANNEL_ID)의 메시지에만 반응.
+DISCORD_TOKEN: str = os.getenv("DISCORD_LIBY_TOKEN", "")
+DISCORD_CHANNEL_ID: str = os.getenv("DISCORD_LIBY_CHANNEL_ID", "")
 PUBLIC_BASE_URL: str = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:8000")
 BOT_API_TOKEN: str = os.getenv("BOT_API_TOKEN", "")
 

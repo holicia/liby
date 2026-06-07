@@ -1,5 +1,7 @@
 .env
 liby.db
+liby.db-journal
+server.log
 vault/
 __pycache__/
 *.pyc

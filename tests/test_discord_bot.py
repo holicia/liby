@@ -5,7 +5,8 @@ from services import discord_bot as db
 
 @pytest.fixture(autouse=True)
 def _allow(monkeypatch):
-    monkeypatch.setattr(config, "DISCORD_ALLOWED_USER_ID", "111")
+    # 권한은 전용 채널 기준 — 허용 채널 id를 111로 둔다.
+    monkeypatch.setattr(config, "DISCORD_CHANNEL_ID", "111")
 
 
 class Recorder:
@@ -16,14 +17,14 @@ class Recorder:
 
 
 @pytest.mark.asyncio
-async def test_ignores_other_users(monkeypatch):
+async def test_ignores_other_channels(monkeypatch):
     called = {"n": 0}
     async def fake_submit(*a, **k):
         called["n"] += 1
         return {"task_id": "x", "title": "t", "kind": "text"}
     monkeypatch.setattr(db.bot_core, "submit_analysis", fake_submit)
     rec = Recorder()
-    await db.handle_message(999, "메모", rec)   # 허용 ID 아님
+    await db.handle_message(999, "메모", rec)   # 허용 채널 아님
     assert called["n"] == 0
     assert rec.calls == []
 

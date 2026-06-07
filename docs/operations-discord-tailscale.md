@@ -6,18 +6,23 @@
 ## 1. Discord 봇 만들기
 
 1. https://discord.com/developers/applications → New Application.
-2. Bot 탭 → Add Bot → **Reset Token** 으로 토큰 복사.
+2. Bot 탭 → Add Bot → **Reset Token** 으로 토큰 복사(`DISCORD_LIBY_TOKEN`).
 3. Bot 탭에서 **Message Content Intent** 활성화(필수 — 메시지 본문 수신).
 4. OAuth2 → URL Generator → scopes `bot`, 권한 `Send Messages`/`Read Message History`
-   선택 → 생성된 URL로 내 개인 서버에 봇 초대(또는 봇과 DM 가능 상태로 둠).
-5. 내 Discord 사용자 ID 확인: 설정 → 고급 → 개발자 모드 ON → 내 프로필 우클릭
-   "사용자 ID 복사".
+   선택 → 생성된 URL로 **나만 들어가는 개인 서버**에 봇 초대.
+5. 그 서버에 **전용 비공개 채널**을 하나 만든다(나·봇만 접근 가능하게).
+   개발자 모드 ON(설정 → 고급) 후 채널 우클릭 "채널 ID 복사"(`DISCORD_LIBY_CHANNEL_ID`).
+
+> 권한은 **채널 기준**이다. 이 채널에 들어온 메시지에만 봇이 반응하므로,
+> 채널을 본인만 접근 가능하게 두면 사실상 본인 전용이 된다. 사용자 ID는 필요 없다.
+> (`DISCORD_LIBY_APP_ID`·`DISCORD_LIBY_APP_PUBLIC_KEY`는 슬래시 명령/웹훅 방식용이라
+> 이 게이트웨이 봇에선 쓰지 않는다 — .env에 남겨둬도 무방.)
 
 ## 2. .env 설정
 
 ```
-DISCORD_BOT_TOKEN=<봇 토큰>
-DISCORD_ALLOWED_USER_ID=<내 사용자 ID>
+DISCORD_LIBY_TOKEN=<봇 토큰>
+DISCORD_LIBY_CHANNEL_ID=<전용 비공개 채널 ID>
 PUBLIC_BASE_URL=http://<PC-MagicDNS-이름>.ts.net:8000
 # 선택: 내부 API 추가 보호
 BOT_API_TOKEN=<임의 문자열>
@@ -50,9 +55,9 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8000
 
 ## 5. 사용
 
-- 봇에게(또는 봇이 있는 비공개 채널에) 유튜브 링크를 보낸다 → ⏳ → 잠시 후 요약 임베드.
+- **전용 채널에** 유튜브 링크를 보낸다 → ⏳ → 잠시 후 요약 임베드.
 - 임베드 타임라인의 시간 링크를 누르면 폰 유튜브 앱이 해당 지점으로 점프.
 - "전체 노트" 링크(Tailscale ON)로 브라우저에서 전체 노트 열람.
 - 상세 분석: 메시지를 `상세 <링크>`로 시작.
 - 일반 텍스트/메모도 그대로 보내면 text 노트로 분석된다.
-- 허용 ID(`DISCORD_ALLOWED_USER_ID`)가 아닌 계정의 메시지는 무시된다.
+- 지정 채널(`DISCORD_LIBY_CHANNEL_ID`) 밖의 메시지는 무시된다.

@@ -14,9 +14,10 @@ _POLL_MAX_TICKS = 300  # 약 10분 (2초 * 300)
 _DETAIL_KEYWORDS = ("상세", "/detailed")
 
 
-def _is_authorized(author_id) -> bool:
-    allowed = config.DISCORD_ALLOWED_USER_ID
-    return bool(allowed) and str(author_id) == str(allowed)
+def _is_authorized(channel_id) -> bool:
+    """전용 비공개 채널 메시지에만 반응. 채널 미설정 시 fail-closed."""
+    allowed = config.DISCORD_CHANNEL_ID
+    return bool(allowed) and str(channel_id) == str(allowed)
 
 
 def _parse_mode(text: str) -> tuple[str, str]:
@@ -43,9 +44,10 @@ async def _await_result(task_id: str, sleep=asyncio.sleep) -> dict:
     return {"status": "timeout", "error": "분석 시간 초과"}
 
 
-async def handle_message(author_id, content: str, reply, is_bot: bool = False) -> None:
-    """메시지 1건 처리. reply(text=None, embed=None)는 비동기 콜백."""
-    if is_bot or not _is_authorized(author_id):
+async def handle_message(channel_id, content: str, reply, is_bot: bool = False) -> None:
+    """메시지 1건 처리. reply(text=None, embed=None)는 비동기 콜백.
+    is_bot 가드는 같은 채널에 회신하는 봇 자신의 메시지 루프를 막는다."""
+    if is_bot or not _is_authorized(channel_id):
         return
     text = (content or "").strip()
     if not text:
@@ -84,10 +86,10 @@ def _to_embed(embed_dict: dict):
 
 
 async def start_bot() -> None:
-    """DISCORD_BOT_TOKEN이 있을 때만 기동. main.py lifespan에서 호출."""
-    token = config.DISCORD_BOT_TOKEN
+    """DISCORD_TOKEN이 있을 때만 기동. main.py lifespan에서 호출."""
+    token = config.DISCORD_TOKEN
     if not token:
-        log.info("DISCORD_BOT_TOKEN 미설정 — Discord 봇 비활성")
+        log.info("DISCORD_LIBY_TOKEN 미설정 — Discord 봇 비활성")
         return
     import discord
     intents = discord.Intents.default()
@@ -103,7 +105,7 @@ async def start_bot() -> None:
         async def reply(text=None, embed=None):
             await message.channel.send(
                 content=text, embed=_to_embed(embed) if embed else None)
-        await handle_message(message.author.id, message.content, reply,
+        await handle_message(message.channel.id, message.content, reply,
                              is_bot=message.author.bot)
 
     try:
