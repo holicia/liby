@@ -202,6 +202,20 @@ async def test_index_input_forms_offer_cli_providers():
 
 
 @pytest.mark.asyncio
+async def test_index_has_mobile_drawer():
+    """메인 앱이 모바일 햄버거 토글 + 오프캔버스 드로어 + 오버레이를 갖춘다."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        resp = await c.get("/")
+    assert resp.status_code == 200
+    assert 'id="sidebar-toggle"' in resp.text
+    assert 'id="sidebar-overlay"' in resp.text
+    assert "-translate-x-full" in resp.text
+    assert "md:translate-x-0" in resp.text
+    assert "function toggleSidebar" in resp.text
+    assert "function closeSidebar" in resp.text
+
+
+@pytest.mark.asyncio
 async def test_vault_static_mount_serves_existing_file(tmp_path):
     """/vault/<path>가 config.VAULT_PATH 하위의 실제 파일을 서빙해야 한다."""
     import config
