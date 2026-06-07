@@ -45,3 +45,14 @@ async def test_read_view_redirects_when_note_missing():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False) as c:
             resp = await c.get("/api/items/999/read")
     assert resp.status_code in (302, 307, 404)
+
+
+@pytest.mark.asyncio
+async def test_read_view_has_viewport_meta():
+    """모바일 렌더링을 위해 read.html에 viewport 메타가 있어야 한다."""
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=YT_NOTE):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/read")
+    assert resp.status_code == 200
+    assert 'name="viewport"' in resp.text
+    assert "width=device-width" in resp.text
