@@ -176,8 +176,14 @@ function closeSidebar() {
 }
 function toggleAnalysis() {
   const p = document.getElementById('analysis-panel');
+  const t = document.getElementById('analysis-toggle');
   if (!p) return;
+  const opening = p.classList.contains('hidden');
   p.classList.toggle('hidden');
+  if (t) {
+    t.textContent = opening ? '− 분석' : '+ 분석';
+    t.setAttribute('aria-label', opening ? '분석 입력 닫기' : '분석 입력 열기');
+  }
 }
 function toggleTheme() {
   const html = document.documentElement;
