@@ -33,7 +33,7 @@
   <button id="sidebar-toggle" onclick="toggleSidebar()" aria-label="메뉴 열기"
           class="md:hidden flex items-center mr-3 text-xl text-gray-500 hover:text-[#1F6F4A] dark:hover:text-[#34A66A]">☰</button>
   <span class="font-extrabold text-[17px] text-[#1F6F4A] dark:text-[#34A66A] flex items-center mr-6">📚 liby</span>
-  <div class="flex items-stretch overflow-x-auto">
+  <div class="hidden md:flex items-stretch overflow-x-auto">
     {% for tab in [("YouTube","youtube"),("PDF","pdf"),("Code","code"),("Text","text"),("Markdown","markdown")] %}
     <button
       class="px-4 text-xs font-medium text-gray-400 border-b-2 border-transparent hover:text-gray-700 transition-colors"
@@ -44,7 +44,9 @@
     >{{ tab[0] }}</button>
     {% endfor %}
   </div>
-  <div class="ml-auto flex items-center">
+  <div class="ml-auto flex items-center gap-1">
+    <button id="analysis-toggle" onclick="toggleAnalysis()" aria-label="분석 입력 열기"
+            class="md:hidden text-xs px-2 py-1 border border-[#E2E8E4] rounded-md text-[#1F6F4A] dark:border-gray-700 dark:text-[#34A66A]">+ 분석</button>
     <button onclick="toggleTheme()" class="text-base px-2 py-1 border border-[#E2E8E4] rounded-md text-gray-500 hover:bg-[#EAF4EE] hover:text-[#1F6F4A] transition-colors" id="theme-btn" aria-label="테마 전환">🌙</button>
   </div>
 </nav>
@@ -113,7 +115,8 @@
 
   <!-- MAIN -->
   <main class="flex-1 overflow-y-auto bg-white dark:bg-gray-950">
-    <!-- INPUT PANEL -->
+    <!-- INPUT PANEL (모바일: + 분석 토글로 펼침) -->
+    <div id="analysis-panel" class="hidden md:block">
     <div id="input-panel" class="bg-[#EAF4EE] border-b border-[#E2E8E4] px-5 py-3 dark:bg-[#14291E] dark:border-gray-700">
       {% include "partials/input_youtube.html" %}
     </div>
@@ -124,6 +127,7 @@
               hx-get="/api/projects/options" hx-trigger="load, projectsChanged from:body" hx-swap="innerHTML">
         <option value="">(프로젝트 없음)</option>
       </select>
+    </div>
     </div>
     <!-- QUEUE PANEL -->
     <div id="queue-panel" class="empty:hidden px-5 py-3 space-y-2 border-b border-[#E2E8E4] bg-white dark:bg-gray-950 dark:border-gray-700"></div>
@@ -169,6 +173,11 @@ function closeSidebar() {
   if (!sb || !ov) return;
   sb.classList.add('-translate-x-full');
   ov.classList.add('hidden');
+}
+function toggleAnalysis() {
+  const p = document.getElementById('analysis-panel');
+  if (!p) return;
+  p.classList.toggle('hidden');
 }
 function toggleTheme() {
   const html = document.documentElement;

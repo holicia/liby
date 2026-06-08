@@ -216,6 +216,19 @@ async def test_index_has_mobile_drawer():
 
 
 @pytest.mark.asyncio
+async def test_index_has_analysis_toggle_and_collapsible_input():
+    """모바일: + 분석 토글 + 접히는 입력 래퍼 + 탭 데스크톱 전용."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        resp = await c.get("/")
+    assert resp.status_code == 200
+    assert 'id="analysis-toggle"' in resp.text
+    assert 'id="analysis-panel"' in resp.text
+    assert "function toggleAnalysis" in resp.text
+    assert "hidden md:block" in resp.text
+    assert "hidden md:flex items-stretch" in resp.text
+
+
+@pytest.mark.asyncio
 async def test_vault_static_mount_serves_existing_file(tmp_path):
     """/vault/<path>가 config.VAULT_PATH 하위의 실제 파일을 서빙해야 한다."""
     import config
