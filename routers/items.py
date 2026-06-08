@@ -97,9 +97,11 @@ async def delete_item(note_id: int):
 @router.post("/{note_id}/timeline")
 async def backfill_timeline(request: Request, note_id: int):
     note = await get_note(config.DB_PATH, note_id)
+    projects = await list_projects(config.DB_PATH)
     if not note or note.get("type") != "youtube" or not note.get("source_url"):
         return templates.TemplateResponse(
-            request, "partials/note_detail_modal.html", {"note": note, "video_id": None})
+            request, "partials/note_detail_modal.html",
+            {"note": note, "video_id": None, "projects": projects})
     try:
         data = await extract_youtube_full(note["source_url"])
         provider = get_provider(note.get("ai_provider", config.DEFAULT_AI_PROVIDER))
@@ -114,7 +116,7 @@ async def backfill_timeline(request: Request, note_id: int):
     video_id = youtube_video_id(updated["source_url"]) if updated.get("source_url") else None
     return templates.TemplateResponse(
         request, "partials/note_detail_modal.html",
-        {"note": updated, "video_id": video_id},
+        {"note": updated, "video_id": video_id, "projects": projects},
     )
 
 @router.post("/{note_id}/project")

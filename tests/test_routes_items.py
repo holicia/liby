@@ -407,3 +407,17 @@ async def test_modal_has_mobile_management_actions():
     assert resp.status_code == 200
     assert 'hx-post="/api/items/1/project"' in resp.text
     assert 'hx-post="/api/items/1/upgrade"' in resp.text
+
+
+@pytest.mark.asyncio
+async def test_timeline_modal_still_passes_projects():
+    """backfill_timeline 재렌더 모달도 projects를 넘겨 프로젝트 셀렉트가 유지된다."""
+    pdf_note = {**MOCK_NOTE, "type": "pdf", "source_url": "paper.pdf"}
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=pdf_note), \
+         patch("routers.items.list_projects", new_callable=AsyncMock,
+               return_value=[{"id": 7, "name": "내프로젝트"}]):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/items/1/timeline")
+    assert resp.status_code == 200
+    assert 'hx-post="/api/items/1/project"' in resp.text
+    assert "내프로젝트" in resp.text   # projects 옵션이 렌더됨
