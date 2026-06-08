@@ -46,7 +46,7 @@
     </div>
 
     <!-- 관리 액션 (프로젝트 지정 · 상세 정리) — 모바일 카드에서 컨트롤이 숨겨지므로 여기서 처리 -->
-    <div class="flex items-center gap-2 mb-4 flex-wrap">
+    <div class="md:hidden flex items-center gap-2 mb-4 flex-wrap">
       <select name="project_id"
               class="text-[11px] bg-white border border-[#E2E8E4] rounded px-2 py-1 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
               hx-post="/api/items/{{ note.id }}/project"
