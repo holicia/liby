@@ -246,3 +246,12 @@ async def test_vault_static_mount_serves_existing_file(tmp_path):
         target.unlink(missing_ok=True)
         try: target_dir.rmdir()
         except OSError: pass
+
+
+@pytest.mark.asyncio
+async def test_recommended_grid_single_col_mobile():
+    """추천 노트 그리드가 모바일 1열·데스크톱 2열."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        resp = await c.get("/")
+    assert resp.status_code == 200
+    assert "grid-cols-1 md:grid-cols-2" in resp.text
