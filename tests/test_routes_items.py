@@ -395,3 +395,15 @@ async def test_card_hides_controls_on_mobile():
             resp = await c.get("/api/items")
     assert resp.status_code == 200
     assert "hidden md:flex flex-col gap-1" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_modal_has_mobile_management_actions():
+    """모달에 프로젝트 지정 셀렉트 + 상세정리(quick) 버튼이 노출된다."""
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert 'hx-post="/api/items/1/project"' in resp.text
+    assert 'hx-post="/api/items/1/upgrade"' in resp.text

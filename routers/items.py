@@ -61,12 +61,13 @@ async def get_random_notes_partial(request: Request):
 @router.get("/{note_id}/detail")
 async def get_item_detail(request: Request, note_id: int):
     note = await get_note(config.DB_PATH, note_id)
+    projects = await list_projects(config.DB_PATH)
     video_id = None
     if note and note.get("type") == "youtube" and note.get("source_url"):
         video_id = youtube_video_id(note["source_url"])
     return templates.TemplateResponse(
         request, "partials/note_detail_modal.html",
-        {"note": note, "video_id": video_id},
+        {"note": note, "video_id": video_id, "projects": projects},
     )
 
 @router.get("/{note_id}/read")

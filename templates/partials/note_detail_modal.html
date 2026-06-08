@@ -45,6 +45,27 @@
       </div>
     </div>
 
+    <!-- 관리 액션 (프로젝트 지정 · 상세 정리) — 모바일 카드에서 컨트롤이 숨겨지므로 여기서 처리 -->
+    <div class="flex items-center gap-2 mb-4 flex-wrap">
+      <select name="project_id"
+              class="text-[11px] bg-white border border-[#E2E8E4] rounded px-2 py-1 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+              hx-post="/api/items/{{ note.id }}/project"
+              hx-trigger="change"
+              hx-target="#note-card-{{ note.id }}"
+              hx-swap="outerHTML">
+        <option value="" {% if not note.project_id %}selected{% endif %}>미분류</option>
+        {% for p in projects or [] %}
+        <option value="{{ p.id }}" {% if note.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+      {% if note.summary_mode == 'quick' %}
+      <button class="text-[11px] bg-[#1F6F4A] text-white rounded px-3 py-1 font-semibold hover:opacity-90"
+              hx-post="/api/items/{{ note.id }}/upgrade"
+              hx-target="#queue-panel"
+              hx-swap="beforeend">상세 정리</button>
+      {% endif %}
+    </div>
+
     <!-- 영상 임베드 + 챕터 -->
     {% if video_id %}
     <div class="mb-4">
