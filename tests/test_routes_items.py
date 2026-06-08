@@ -384,3 +384,14 @@ async def test_modal_uses_responsive_padding():
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
     assert "p-4 md:p-6" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_card_hides_controls_on_mobile():
+    """노트 카드 우측 컨트롤 컬럼이 모바일에서 숨겨진다(hidden md:flex)."""
+    with patch("routers.items.list_notes", return_value=[MOCK_NOTE]), \
+         patch("routers.items.list_projects", return_value=[]):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items")
+    assert resp.status_code == 200
+    assert "hidden md:flex flex-col gap-1" in resp.text
