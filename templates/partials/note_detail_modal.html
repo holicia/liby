@@ -26,9 +26,9 @@
             class="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 transition-colors text-sm font-bold">✕</button>
 
     <!-- 헤더 -->
-    <div class="flex items-start gap-3 mb-4 pr-24">
+    <div class="flex flex-col md:flex-row items-start gap-2 md:gap-3 mb-4 md:pr-24">
       <span class="flex-shrink-0 bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] text-[10px] font-bold px-2 py-1 rounded border border-[#A8CBB2] dark:border-[#2D6B4A]">{{ note.type | upper }}</span>
-      <div>
+      <div class="w-full md:w-auto">
         <h2 class="font-bold text-[15px] text-[#1F2937] dark:text-gray-100 leading-snug">{{ note.title }}</h2>
         <div class="text-[10px] text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
           {{ note.created_at }}
