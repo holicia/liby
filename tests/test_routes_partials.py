@@ -255,3 +255,13 @@ async def test_recommended_grid_single_col_mobile():
         resp = await c.get("/")
     assert resp.status_code == 200
     assert "grid-cols-1 md:grid-cols-2" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_index_uses_dynamic_viewport_height():
+    """모바일 주소창(동적 툴바) 대응: body가 dvh-screen + 100dvh 규칙 사용."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        resp = await c.get("/")
+    assert resp.status_code == 200
+    assert "dvh-screen" in resp.text
+    assert "100dvh" in resp.text

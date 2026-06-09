@@ -3,7 +3,7 @@
 {{- "%d:%02d:%02d"|format(t // 3600, t % 3600 // 60, t % 60) if t >= 3600 else "%d:%02d"|format(t // 60, t % 60) -}}
 {%- endmacro %}
 {% if note %}
-<div class="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto"
+<div class="dvh-screen fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto"
      id="note-modal-overlay"
      onclick="if(event.target===this){closeNoteModal()}">
   <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl my-4 md:my-8 p-4 md:p-6 relative shadow-2xl">
