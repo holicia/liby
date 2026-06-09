@@ -24,9 +24,11 @@
   [data-theme="dark"] { --green:#34A66A; --sage:#2D6B4A; --sage-light:#14291E; --border:#2D3748; --sub:#1F2937; }
   body { background: white; }
   [data-theme="dark"] body { background: #111827; color: #F9FAFB; }
+  /* 모바일 주소창(동적 툴바) 대응: 100vh 대신 동적 뷰포트 높이로 상단 가림 방지 */
+  .dvh-screen { height: 100vh; height: 100dvh; }
 </style>
 </head>
-<body class="text-[#1F2937] dark:text-gray-100 h-screen overflow-hidden flex flex-col">
+<body class="text-[#1F2937] dark:text-gray-100 dvh-screen overflow-hidden flex flex-col">
 
 <!-- NAVBAR -->
 <nav class="sticky top-0 z-10 bg-white border-b border-[#E2E8E4] flex items-stretch h-12 px-5 shadow-sm dark:bg-gray-900 dark:border-gray-700">

@@ -1,7 +1,7 @@
 {% if note %}
-<div id="note-card-{{ note.id }}" class="note-card bg-[#F3F5F4] border border-[#E2E8E4] rounded-xl p-4 flex gap-3 items-start hover:border-[#A8CBB2] hover:shadow-sm transition-all cursor-pointer dark:bg-gray-800 dark:border-gray-700">
+<div id="note-card-{{ note.id }}" class="note-card bg-[#F3F5F4] border border-[#E2E8E4] rounded-xl p-4 flex flex-col md:flex-row gap-2 md:gap-3 items-start hover:border-[#A8CBB2] hover:shadow-sm transition-all cursor-pointer dark:bg-gray-800 dark:border-gray-700">
   <span class="flex-shrink-0 mt-0.5 bg-[#EAF4EE] text-[#1F6F4A] dark:bg-[#14291E] dark:text-[#34A66A] text-[10px] font-bold px-2 py-1 rounded border border-[#A8CBB2] dark:border-[#2D6B4A]">{{ note.type | upper }}</span>
-  <div class="flex-1"
+  <div class="w-full md:flex-1"
        hx-get="/api/items/{{ note.id }}/detail"
        hx-target="#note-modal"
        hx-swap="innerHTML">

@@ -433,3 +433,25 @@ async def test_timeline_modal_still_passes_projects():
     assert resp.status_code == 200
     assert 'hx-post="/api/items/1/project"' in resp.text
     assert "내프로젝트" in resp.text   # projects 옵션이 렌더됨
+
+
+@pytest.mark.asyncio
+async def test_card_stacks_vertically_on_mobile():
+    """카드가 모바일 세로 스택(뱃지 위, 제목 전체폭)·데스크톱 가로."""
+    with patch("routers.items.list_notes", return_value=[MOCK_NOTE]), \
+         patch("routers.items.list_projects", return_value=[]):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items")
+    assert resp.status_code == 200
+    assert "flex flex-col md:flex-row" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_modal_overlay_uses_dynamic_viewport_height():
+    """모달 오버레이도 dvh-screen으로 상단 가림 방지."""
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert "dvh-screen" in resp.text
