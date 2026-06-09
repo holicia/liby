@@ -90,7 +90,8 @@ async def test_set_note_project():
 
 @pytest.mark.asyncio
 async def test_detail_passes_video_id_for_youtube():
-    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE):
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
@@ -110,7 +111,8 @@ async def test_detail_renders_legacy_lead_bullets_items():
         ]}],
         "paragraphs": [],  # 옛 노트는 paragraphs 없음
     })
-    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=legacy):
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=legacy), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
@@ -127,7 +129,8 @@ async def test_detail_renders_legacy_quick_key_points_fallback():
         "summary_mode": "quick", "sections": [],
         "key_points": ["옛 핵심 1", "옛 핵심 2"], "paragraphs": [],
     })
-    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=legacy):
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=legacy), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
@@ -147,7 +150,8 @@ async def test_backfill_timeline_calls_set_timeline():
          patch("routers.items.get_provider", return_value=fake_ai), \
          patch("routers.items.resolve_chapters", new_callable=AsyncMock, return_value=([{"t": 0, "label": "C"}], 0.0, "")), \
          patch("routers.items.set_timeline", new_callable=AsyncMock) as mock_set, \
-         patch("routers.items.record_api_cost", new_callable=AsyncMock):
+         patch("routers.items.record_api_cost", new_callable=AsyncMock), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.post("/api/items/1/timeline")
     assert resp.status_code == 200
@@ -159,7 +163,8 @@ async def test_backfill_timeline_skips_non_youtube():
     pdf_note = {**MOCK_NOTE, "type": "pdf", "source_url": "paper.pdf"}
     with patch("routers.items.get_note", new_callable=AsyncMock, return_value=pdf_note), \
          patch("routers.items.extract_youtube_full", new_callable=AsyncMock) as mock_extract, \
-         patch("routers.items.set_timeline", new_callable=AsyncMock) as mock_set:
+         patch("routers.items.set_timeline", new_callable=AsyncMock) as mock_set, \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.post("/api/items/1/timeline")
     assert resp.status_code == 200
@@ -283,7 +288,8 @@ async def test_card_renders_delete_button():
 @pytest.mark.asyncio
 async def test_modal_renders_delete_button():
     """모달 우상단에 hx-delete 휴지통이 렌더돼야 한다."""
-    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE):
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
@@ -302,7 +308,8 @@ async def test_modal_chapter_list_renders_inline_thumbnails_when_images_present(
         {"t": 0, "label": "A", "image": "slug/ch-1.jpg"},
         {"t": 90, "label": "B", "image": "slug/ch-2.jpg"},
     ]
-    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note):
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
@@ -322,7 +329,8 @@ async def test_modal_chapter_list_no_thumbnail_when_images_missing():
         {"t": 0, "label": "A"},
         {"t": 90, "label": "B"},
     ]
-    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note):
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
@@ -339,7 +347,8 @@ async def test_modal_paragraph_refs_render_chips():
     note["paragraphs"] = [
         {"text": "본문 한 줄.", "refs": [{"t": 30, "snippet": "원문1"}, {"t": 60, "snippet": "원문2"}]},
     ]
-    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note):
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
@@ -356,7 +365,8 @@ async def test_modal_legacy_quote_paragraph_renders_single_chip():
     note["paragraphs"] = [
         {"text": "옛 본문.", "quote": "옛 원문", "t": 42},
     ]
-    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note):
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
@@ -368,7 +378,8 @@ async def test_modal_shows_full_screen_link_for_youtube():
     """YouTube 노트 모달 우상단에 /items/{id}/read 링크 노출."""
     note = dict(MOCK_NOTE)
     note["source_url"] = "https://youtu.be/dQw4w9WgXcY"
-    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note):
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=note), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
@@ -379,8 +390,46 @@ async def test_modal_shows_full_screen_link_for_youtube():
 @pytest.mark.asyncio
 async def test_modal_uses_responsive_padding():
     """모달 카드가 모바일에서 좁은 패딩(p-4)·데스크톱 p-6을 쓴다."""
-    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE):
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
     assert "p-4 md:p-6" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_card_hides_controls_on_mobile():
+    """노트 카드 우측 컨트롤 컬럼이 모바일에서 숨겨진다(hidden md:flex)."""
+    with patch("routers.items.list_notes", return_value=[MOCK_NOTE]), \
+         patch("routers.items.list_projects", return_value=[]):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items")
+    assert resp.status_code == 200
+    assert "hidden md:flex flex-col gap-1" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_modal_has_mobile_management_actions():
+    """모달에 프로젝트 지정 셀렉트 + 상세정리(quick) 버튼이 노출된다."""
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert 'hx-post="/api/items/1/project"' in resp.text
+    assert 'hx-post="/api/items/1/upgrade"' in resp.text
+
+
+@pytest.mark.asyncio
+async def test_timeline_modal_still_passes_projects():
+    """backfill_timeline 재렌더 모달도 projects를 넘겨 프로젝트 셀렉트가 유지된다."""
+    pdf_note = {**MOCK_NOTE, "type": "pdf", "source_url": "paper.pdf"}
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=pdf_note), \
+         patch("routers.items.list_projects", new_callable=AsyncMock,
+               return_value=[{"id": 7, "name": "내프로젝트"}]):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/items/1/timeline")
+    assert resp.status_code == 200
+    assert 'hx-post="/api/items/1/project"' in resp.text
+    assert "내프로젝트" in resp.text   # projects 옵션이 렌더됨
