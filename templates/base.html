@@ -26,6 +26,10 @@
   [data-theme="dark"] body { background: #111827; color: #F9FAFB; }
   /* 모바일 주소창(동적 툴바) 대응: 100vh 대신 동적 뷰포트 높이로 상단 가림 방지 */
   .dvh-screen { height: 100vh; height: 100dvh; }
+  /* iOS Safari: 16px 미만 폼 컨트롤 포커스 시 자동 확대 → 모바일에서 16px로 막음 */
+  @media (max-width: 767px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
 </style>
 </head>
 <body class="text-[#1F2937] dark:text-gray-100 dvh-screen overflow-hidden flex flex-col">

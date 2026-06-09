@@ -265,3 +265,22 @@ async def test_index_uses_dynamic_viewport_height():
     assert resp.status_code == 200
     assert "dvh-screen" in resp.text
     assert "100dvh" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_youtube_input_form_stacks_on_mobile():
+    """+ 분석 입력 폼이 모바일 세로 스택·데스크톱 한 줄."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        resp = await c.get("/partials/input/youtube")
+    assert resp.status_code == 200
+    assert "flex flex-col md:flex-row" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_index_prevents_ios_input_zoom():
+    """모바일 폼 컨트롤 16px 규칙으로 iOS Safari 포커스 자동확대 방지."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        resp = await c.get("/")
+    assert resp.status_code == 200
+    assert "max-width: 767px" in resp.text
+    assert "font-size: 16px" in resp.text
