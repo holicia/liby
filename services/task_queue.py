@@ -50,7 +50,12 @@ def register_builder(source_type: str, builder: Builder) -> None:
 
 
 async def _save_task(task: AnalysisTask, db_path: str | None = None) -> None:
-    """UPSERT. spec_json 포함. builder가 등록된 source_type만 호출됨."""
+    """UPSERT. spec_json 포함. builder가 등록된 source_type만 호출됨.
+
+    DO UPDATE는 terminal 상태(done/error/cancelled)인 row를 절대 덮어쓰지 않는다.
+    new_task의 fire-and-forget 초기 저장은 aiosqlite 연결 지연 탓에 워커의 terminal
+    저장보다 늦게 커밋될 수 있는데, 가드가 없으면 그 stale 저장이 완료된 task를
+    'running'/'queued'로 되돌려 재시작 시 재실행되는 버그가 생긴다."""
     path = db_path or config.DB_PATH
     async with aiosqlite.connect(path) as db:
         await db.execute(
@@ -61,7 +66,8 @@ async def _save_task(task: AnalysisTask, db_path: str | None = None) -> None:
                ON CONFLICT(id) DO UPDATE SET
                  status=excluded.status, title=excluded.title, progress=excluded.progress,
                  note_id=excluded.note_id, error=excluded.error, attempts=excluded.attempts,
-                 batch_index=excluded.batch_index, updated_at=CURRENT_TIMESTAMP""",
+                 batch_index=excluded.batch_index, updated_at=CURRENT_TIMESTAMP
+               WHERE analysis_tasks.status NOT IN ('done', 'error', 'cancelled')""",
             (task.id, task.status, task.source_type, task.title, task.progress,
              task.note_id, task.error, task.attempts, task.batch_index,
              json.dumps(task.spec, ensure_ascii=False)),
