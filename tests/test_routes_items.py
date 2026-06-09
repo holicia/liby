@@ -455,3 +455,14 @@ async def test_modal_overlay_uses_dynamic_viewport_height():
             resp = await c.get("/api/items/1/detail")
     assert resp.status_code == 200
     assert "dvh-screen" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_modal_header_stacks_vertically_on_mobile():
+    """모달 헤더가 모바일 세로 스택(뱃지 위·제목 전체폭)·데스크톱 가로."""
+    with patch("routers.items.get_note", new_callable=AsyncMock, return_value=MOCK_NOTE), \
+         patch("routers.items.list_projects", new_callable=AsyncMock, return_value=[]):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get("/api/items/1/detail")
+    assert resp.status_code == 200
+    assert "flex flex-col md:flex-row items-start" in resp.text
