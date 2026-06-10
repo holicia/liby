@@ -1,4 +1,7 @@
 .env
+.venv/
+venv/
+.claude/
 liby.db
 liby.db-journal
 server.log
