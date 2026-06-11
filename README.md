@@ -1,78 +1,116 @@
 # liby
 
-개인용 지식 수집 AI 라이브러리. YouTube 영상, PDF, 텍스트, Markdown, 코드를 붙여넣으면 AI가 Lilys 스타일의 구조화된 요약 노트를 만들어 주고, 웹 UI에서 열람·검색·관리할 수 있습니다.
+> Paste a YouTube URL, PDF, article text, or code — get a structured AI summary note in a local web library you own.
 
-> A personal knowledge library: paste a YouTube URL, PDF, text, or code and get an AI-generated structured summary note, browsable in a local web UI.
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+<!-- After publishing, add the CI badge:
+[![CI](https://github.com/<owner>/liby/actions/workflows/ci.yml/badge.svg)](https://github.com/<owner>/liby/actions) -->
 
-## 주요 기능
+**English** | [한국어](README.ko.md)
 
-- **다양한 입력 소스** — YouTube(자막 자동 추출, yt-dlp), PDF(PyMuPDF), 일반 텍스트, Markdown, 코드
-- **2단계 요약 모드** — 빠른 요약(quick)과 챕터·인용·각주가 포함된 상세 요약(detailed)
-- **YouTube 타임라인 연동** — 요약 문단의 타임스탬프 클릭 시 임베드 플레이어가 해당 지점으로 이동
-- **프로젝트/토픽 관리** — 노트를 프로젝트·토픽으로 묶고 프로젝트 다이제스트 생성
-- **AI 프로바이더 교체 가능** — Anthropic API, OpenAI API, 또는 [agent-runner-bridge](docs/operations-discord-tailscale.md)를 통한 Claude Code/Codex CLI(구독 인증, 추가 비용 없음)
-- **비용 가드** — 프로바이더별 월간 사용액 한도 및 사용량 대시보드
-- **Discord 봇 연동(선택)** — 폰에서 Discord 메시지로 분석을 트리거하고, Tailscale로 결과 열람 ([운영 가이드](docs/operations-discord-tailscale.md))
-- **Obsidian 친화적 저장** — 모든 노트는 SQLite + `vault/`의 Markdown 파일로 저장
+![liby home (light)](docs/images/home-light.png)
 
-## 기술 스택
+<details>
+<summary>Dark mode</summary>
 
-| 레이어 | 기술 |
-|--------|------|
-| 백엔드 | Python 3.11+, FastAPI |
-| 프론트엔드 | Jinja2 + HTMX + Tailwind CSS (빌드 단계 없음) |
-| 저장소 | SQLite(`liby.db`) + Markdown 파일(`vault/`) |
-| AI | Anthropic Claude / OpenAI GPT / CLI bridge |
+![liby home (dark)](docs/images/home-dark.png)
+</details>
 
-## 시작하기
+## Features
+
+- **Multiple input sources** — YouTube (subtitle extraction via yt-dlp), PDF (PyMuPDF), plain text, Markdown, code
+- **Two summary depths** — quick summaries, or detailed notes with chapters, pull quotes, and footnote citations
+- **YouTube timeline integration** — click a timestamp in a note and the embedded player jumps to that moment
+- **Projects & topics** — group notes into projects, generate per-project digests
+- **Pluggable AI providers** — Anthropic API, OpenAI API, or your own **Claude Pro / ChatGPT Plus subscription** via the bundled [agent-runner-bridge](bridge/README.md) (no API billing)
+- **Cost guard** — monthly spend limit per provider plus a usage dashboard
+- **Discord bot (optional)** — trigger analysis from your phone and read results over Tailscale ([guide](docs/operations-discord-tailscale.md), Korean)
+- **Obsidian-friendly storage** — every note is a Markdown file in `vault/` plus a row in SQLite
+
+## Quick start (Docker)
 
 ```bash
 git clone <this-repo>
 cd liby
-python -m venv .venv
-# Windows: .venv\Scripts\activate / macOS·Linux: source .venv/bin/activate
+cp .env.example .env
+```
+
+### Option A — API keys
+
+Set in `.env`: `DEFAULT_AI_PROVIDER=claude` (or `gpt`) and the matching API key, then:
+
+```bash
+docker compose up --build liby
+```
+
+Open http://127.0.0.1:8000.
+
+### Option B — your own subscription (Claude Pro / ChatGPT Plus)
+
+Runs analyses through the Claude Code / Codex CLI authenticated with **your own account** — no API billing. Credentials are never baked into the repo or image; each user injects their own locally.
+
+1. Install the CLI on your host and log in once: `claude` (or `codex`)
+2. Copy your credentials into the (gitignored) mount directory:
+   - Windows: `pwsh ./bridge/scripts/sync-creds.ps1`
+   - macOS/Linux: `./bridge/scripts/sync-creds.sh`
+3. Set `BRIDGE_TOKEN` in `.env` to any long random string, then:
+
+```bash
+docker compose up --build
+```
+
+`docker compose up` starts both liby and the bridge; liby reaches the bridge over the internal network automatically.
+
+### Manual install (no Docker)
+
+```bash
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env   # 키·설정 입력
 python -m uvicorn main:app --port 8000
 ```
 
-브라우저에서 http://127.0.0.1:8000 접속.
+Optional: install `ffmpeg` for YouTube chapter screenshots.
 
-### .env 설정
+## Configuration
 
-최소한 AI 프로바이더 하나는 설정해야 합니다. [.env.example](.env.example)에 전체 항목과 설명이 있습니다.
+All settings live in `.env` — see [.env.example](.env.example) for the full annotated list.
 
-| 프로바이더 | `DEFAULT_AI_PROVIDER` | 필요 설정 |
-|-----------|----------------------|----------|
-| Anthropic API | `claude` | `ANTHROPIC_API_KEY` |
-| OpenAI API | `gpt` | `OPENAI_API_KEY` |
-| Claude Code CLI (bridge) | `claude-cli` | `BRIDGE_BASE_URL`, `BRIDGE_TOKEN` |
-| Codex CLI (bridge) | `codex-cli` | `BRIDGE_BASE_URL`, `BRIDGE_TOKEN` |
+| Variable | Purpose |
+|----------|---------|
+| `DEFAULT_AI_PROVIDER` | `claude` (Anthropic API), `gpt` (OpenAI API), `claude-cli` / `codex-cli` (subscription via bridge) |
+| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | API keys (only for the provider you use) |
+| `CLAUDE_MONTHLY_LIMIT_USD` / `GPT_MONTHLY_LIMIT_USD` | Monthly spend caps; provider is blocked when exceeded |
+| `BRIDGE_TOKEN` | Shared secret between liby and the bridge (subscription mode) |
+| `DISCORD_LIBY_TOKEN` / `DISCORD_LIBY_CHANNEL_ID` | Optional Discord bot trigger |
+| `DB_PATH` / `VAULT_PATH` | SQLite file and Markdown vault locations |
 
-Discord 봇·외부 열람(Tailscale)은 선택 사항이며 [docs/operations-discord-tailscale.md](docs/operations-discord-tailscale.md)를 참고하세요.
+## Architecture
 
-## 테스트
+```
+Browser (HTMX + Tailwind)
+    ↕ server-rendered HTML fragments
+FastAPI ── routers (youtube / pdf / text / code / items / projects / ...)
+    ├── task queue (async analysis worker)
+    ├── AI provider layer ── Anthropic API / OpenAI API
+    │                        └── bridge (:8787) ── claude / codex CLI (your subscription)
+    └── SQLite (liby.db) + Markdown files (vault/)
+```
+
+## Notes & limitations
+
+- The web UI and generated summaries are currently **Korean-first**.
+- Subscription mode: OAuth login cannot run inside the container — log in on the host, and re-run `sync-creds` whenever tokens refresh.
+- Use only your **own** account credentials.
+
+## Development
 
 ```bash
-python -m pytest
+python -m pytest          # liby tests (all external calls mocked — no keys needed)
+cd bridge && npm test     # bridge tests
 ```
 
-외부 API 호출은 모두 모킹되어 있어 네트워크나 API 키 없이 실행됩니다.
+Design specs and implementation plans live in [docs/superpowers/](docs/superpowers/) (Korean).
 
-## 프로젝트 구조
-
-```
-main.py            # FastAPI 앱 진입점 (worker + Discord 봇 lifespan)
-config.py          # .env 기반 설정
-models.py          # SQLite 스키마/초기화
-routers/           # API 라우터 (youtube, pdf, text, code, items, projects, ...)
-services/          # 추출·요약·태스크 큐·Discord 봇
-services/ai/       # AI 프로바이더 추상화 (claude / openai / bridge / fallback)
-templates/         # Jinja2 + HTMX 템플릿
-vault/             # 생성된 Markdown 노트 (gitignore)
-docs/              # 설계 스펙·구현 계획·운영 가이드
-```
-
-## 라이선스
+## License
 
 [MIT](LICENSE)
