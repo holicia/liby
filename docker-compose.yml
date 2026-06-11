@@ -1,0 +1,68 @@
+services:
+  liby:
+    build: .
+    image: liby:latest
+    ports:
+      - "8000:8000"
+    environment:
+      DB_PATH: /data/liby.db
+      VAULT_PATH: /data/vault
+      DEFAULT_AI_PROVIDER: ${DEFAULT_AI_PROVIDER:-claude-cli}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CLAUDE_MONTHLY_LIMIT_USD: ${CLAUDE_MONTHLY_LIMIT_USD:-2.00}
+      GPT_MONTHLY_LIMIT_USD: ${GPT_MONTHLY_LIMIT_USD:-2.00}
+      # bridge 서비스로 자동 연결 (compose 내부 DNS)
+      BRIDGE_BASE_URL: http://bridge:8787
+      BRIDGE_TOKEN: ${BRIDGE_TOKEN:-}
+      BRIDGE_CWD: /workspace
+      DISCORD_LIBY_TOKEN: ${DISCORD_LIBY_TOKEN:-}
+      DISCORD_LIBY_CHANNEL_ID: ${DISCORD_LIBY_CHANNEL_ID:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://127.0.0.1:8000}
+      BOT_API_TOKEN: ${BOT_API_TOKEN:-}
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # 구독 인증(Claude Pro / ChatGPT Plus) 또는 API 키로 CLI 에이전트를 실행하는 게이트웨이.
+  # API 키만 쓸 경우: docker compose up liby 로 단독 실행 가능.
+  bridge:
+    build: ./bridge
+    image: agent-runner-bridge:latest
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8787
+      BRIDGE_TOKEN: ${BRIDGE_TOKEN:?set BRIDGE_TOKEN in .env}
+      WORKSPACE_ALLOWLIST: /workspace
+      ENV_ALLOWLIST: OPENAI_API_KEY,ANTHROPIC_API_KEY
+      AUTH_PREFERENCE: ${AUTH_PREFERENCE:-local}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CLAUDE_MONTHLY_LIMIT_USD: ${CLAUDE_MONTHLY_LIMIT_USD:-}
+      GPT_MONTHLY_LIMIT_USD: ${GPT_MONTHLY_LIMIT_USD:-}
+      USAGE_LEDGER_PATH: /data/usage-ledger.json
+      GRACE_SEC: ${GRACE_SEC:-5}
+    volumes:
+      - liby-runs:/workspace
+      - bridge-ledger:/data
+      # 구독 로그인: 호스트에서 claude/codex 로그인 → sync-creds 실행 시 채워짐.
+      # 디렉토리가 비어 있으면 API 키 폴백으로 동작 (무해).
+      - ./bridge/creds/claude:/home/node/.claude
+      - ./bridge/creds/codex:/home/node/.codex
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  liby-runs:
+  bridge-ledger:
