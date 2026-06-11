@@ -18,14 +18,14 @@
 - Create: `bridge/` (agent-runner-bridge의 git 추적 파일 23개 복사)
 - Modify: `.gitignore`
 
-- [ ] **Step 1: 추적 파일만 복사** (히스토리·creds·.env·node_modules 제외)
+- [x] **Step 1: 추적 파일만 복사** (히스토리·creds·.env·node_modules 제외)
 
 ```bash
 mkdir -p /c/Projects/liby/bridge
 cd /c/Projects/code_agent/agent-runner-bridge && git ls-files -z | tar --null -cf - -T - | (cd /c/Projects/liby/bridge && tar -xf -)
 ```
 
-- [ ] **Step 2: 루트 .gitignore에 추가**
+- [x] **Step 2: 루트 .gitignore에 추가**
 
 ```
 # bridge (하위 디렉토리 — 로컬 산출물·인증 정보 제외)
@@ -37,21 +37,21 @@ bridge/workspace/
 data/
 ```
 
-- [ ] **Step 3: PII 스캔** — `git grep` 대상이 되도록 `git add bridge` 후:
+- [x] **Step 3: PII 스캔** — `git grep` 대상이 되도록 `git add bridge` 후:
 
 ```bash
 git diff --cached | grep -aiE '(juhyeon|gmail|Users[/\\]ju|sk-ant-api|[0-9]{17,19})'  # 빈 출력 기대 (sk-ant-... 플레이스홀더 제외)
 git ls-files --cached bridge | grep -E '(creds|\.env$|node_modules)'  # 빈 출력 기대
 ```
 
-- [ ] **Step 4: Commit** — `feat(bridge): agent-runner-bridge를 하위 디렉토리로 통합 (추적 파일만)`
+- [x] **Step 4: Commit** — `feat(bridge): agent-runner-bridge를 하위 디렉토리로 통합 (추적 파일만)`
 
 ### Task 2: bridge/scripts/sync-creds.sh (macOS/Linux용)
 
 **Files:**
 - Create: `bridge/scripts/sync-creds.sh`
 
-- [ ] **Step 1: 스크립트 작성** (ps1과 동등 동작)
+- [x] **Step 1: 스크립트 작성** (ps1과 동등 동작)
 
 ```sh
 #!/usr/bin/env sh
@@ -78,16 +78,16 @@ else
 fi
 ```
 
-- [ ] **Step 2: 실행 비트 설정** — `git add` 후 `git update-index --chmod=+x bridge/scripts/sync-creds.sh`
-- [ ] **Step 3: 문법 검증** — `sh -n bridge/scripts/sync-creds.sh` (출력 없음 기대)
-- [ ] **Step 4: Commit** — `feat(bridge): macOS/Linux용 sync-creds.sh 추가`
+- [x] **Step 2: 실행 비트 설정** — `git add` 후 `git update-index --chmod=+x bridge/scripts/sync-creds.sh`
+- [x] **Step 3: 문법 검증** — `sh -n bridge/scripts/sync-creds.sh` (출력 없음 기대)
+- [x] **Step 4: Commit** — `feat(bridge): macOS/Linux용 sync-creds.sh 추가`
 
 ### Task 3: liby Dockerfile + .dockerignore
 
 **Files:**
 - Create: `Dockerfile`, `.dockerignore`
 
-- [ ] **Step 1: Dockerfile 작성**
+- [x] **Step 1: Dockerfile 작성**
 
 ```dockerfile
 FROM python:3.13-slim
@@ -111,7 +111,7 @@ EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-- [ ] **Step 2: .dockerignore 작성**
+- [x] **Step 2: .dockerignore 작성**
 
 ```
 .git
@@ -140,8 +140,8 @@ README*.md
 LICENSE
 ```
 
-- [ ] **Step 3: 빌드 검증** — `docker build -t liby:dev .` 성공 기대 (Docker 미가용 시 CI로 위임하고 명시)
-- [ ] **Step 4: Commit** — `feat(docker): liby 앱 Dockerfile + .dockerignore`
+- [x] **Step 3: 빌드 검증** — `docker build -t liby:dev .` 성공 기대 (Docker 미가용 시 CI로 위임하고 명시)
+- [x] **Step 4: Commit** — `feat(docker): liby 앱 Dockerfile + .dockerignore`
 
 ### Task 4: 루트 docker-compose.yml + .env.example 갱신
 
@@ -149,7 +149,7 @@ LICENSE
 - Create: `docker-compose.yml`
 - Modify: `.env.example`
 
-- [ ] **Step 1: compose 작성**
+- [x] **Step 1: compose 작성**
 
 ```yaml
 services:
@@ -222,16 +222,16 @@ volumes:
   bridge-ledger:
 ```
 
-- [ ] **Step 2: .env.example에 compose 안내 반영** — BRIDGE 섹션 주석을 "compose 사용 시 BRIDGE_BASE_URL/BRIDGE_CWD는 자동 설정, BRIDGE_TOKEN만 필수(임의 긴 문자열)"로 갱신
-- [ ] **Step 3: 검증** — `BRIDGE_TOKEN=dummy docker compose config -q` (출력 없음=유효)
-- [ ] **Step 4: Commit** — `feat(docker): 루트 compose — liby + bridge 동시 기동, 구독 creds 마운트`
+- [x] **Step 2: .env.example에 compose 안내 반영** — BRIDGE 섹션 주석을 "compose 사용 시 BRIDGE_BASE_URL/BRIDGE_CWD는 자동 설정, BRIDGE_TOKEN만 필수(임의 긴 문자열)"로 갱신
+- [x] **Step 3: 검증** — `BRIDGE_TOKEN=dummy docker compose config -q` (출력 없음=유효)
+- [x] **Step 4: Commit** — `feat(docker): 루트 compose — liby + bridge 동시 기동, 구독 creds 마운트`
 
 ### Task 5: CI 확장 (bridge 테스트 + docker build)
 
 **Files:**
 - Modify: `.github/workflows/ci.yml`
 
-- [ ] **Step 1: 잡 추가**
+- [x] **Step 1: 잡 추가**
 
 ```yaml
   bridge:
@@ -258,15 +258,15 @@ volumes:
       - run: docker build -t agent-runner-bridge:ci ./bridge
 ```
 
-- [ ] **Step 2: 로컬 검증 가능한 범위 확인** — bridge: `cd bridge && npm ci && npm run typecheck && npm test` (호스트에 node 있으면 실행)
-- [ ] **Step 3: Commit** — `ci: bridge(typecheck+vitest)·docker build 검증 잡 추가`
+- [x] **Step 2: 로컬 검증 가능한 범위 확인** — bridge: `cd bridge && npm ci && npm run typecheck && npm test` (호스트에 node 있으면 실행)
+- [x] **Step 3: Commit** — `ci: bridge(typecheck+vitest)·docker build 검증 잡 추가`
 
 ### Task 6: 데모 시드 + 스크린샷
 
 **Files:**
 - Create: `scripts/demo_seed.py`, `docs/images/home-light.png`, `docs/images/home-dark.png`
 
-- [ ] **Step 1: 시드 스크립트 작성** — 실 DB 미사용, `DB_PATH`/`VAULT_PATH` 환경변수로 대상 지정
+- [x] **Step 1: 시드 스크립트 작성** — 실 DB 미사용, `DB_PATH`/`VAULT_PATH` 환경변수로 대상 지정
 
 ```python
 """데모용 노트를 빈 DB에 삽입한다 (스크린샷·체험용 — 실 데이터 불필요).
@@ -330,11 +330,11 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-- [ ] **Step 2: 시드 실행** — `DB_PATH=./demo.db VAULT_PATH=./demo-vault python scripts/demo_seed.py` → 3건 출력 기대
-- [ ] **Step 3: 데모 서버 기동** — `DB_PATH=./demo.db VAULT_PATH=./demo-vault python -m uvicorn main:app --port 8003` (백그라운드)
-- [ ] **Step 4: Playwright 캡처** — `http://127.0.0.1:8003` 라이트 1장, `localStorage.theme=dark` 후 다크 1장 → `docs/images/home-light.png`, `docs/images/home-dark.png` (1280×800)
-- [ ] **Step 5: 정리** — 서버 종료, `demo.db`·`demo-vault/` 삭제, `.gitignore`에 `demo.db*`, `demo-vault/` 추가
-- [ ] **Step 6: Commit** — `docs: 데모 시드 스크립트 + UI 스크린샷`
+- [x] **Step 2: 시드 실행** — `DB_PATH=./demo.db VAULT_PATH=./demo-vault python scripts/demo_seed.py` → 3건 출력 기대
+- [x] **Step 3: 데모 서버 기동** — `DB_PATH=./demo.db VAULT_PATH=./demo-vault python -m uvicorn main:app --port 8003` (백그라운드)
+- [x] **Step 4: Playwright 캡처** — `http://127.0.0.1:8003` 라이트 1장, `localStorage.theme=dark` 후 다크 1장 → `docs/images/home-light.png`, `docs/images/home-dark.png` (1280×800)
+- [x] **Step 5: 정리** — 서버 종료, `demo.db`·`demo-vault/` 삭제, `.gitignore`에 `demo.db*`, `demo-vault/` 추가
+- [x] **Step 6: Commit** — `docs: 데모 시드 스크립트 + UI 스크린샷`
 
 ### Task 7: README 영문 메인 + 한국어 보조
 
@@ -342,15 +342,15 @@ if __name__ == "__main__":
 - Create: `README.ko.md` (현 README 이동·갱신)
 - Modify: `README.md` (영문 신규)
 
-- [ ] **Step 1: README.ko.md 생성** — 현 한국어 README 내용 이동 + Docker/구독 모드 Quick Start 섹션 추가 + 상단에 `[English](README.md)` 링크
-- [ ] **Step 2: README.md 영문 작성** — 구조: 한 줄 소개 → 뱃지(CI·MIT) → 언어 링크 → 스크린샷 → Features → Quick start (Docker: Option A API 키 / Option B 구독 sync-creds 3단계, 수동 설치 보조) → Configuration 표 → Architecture → Notes & limitations (한국어 중심 UI, 토큰 갱신 시 sync-creds 재실행, 본인 계정만 사용) → Development(pytest, bridge vitest) → License
-- [ ] **Step 3: 링크 검증** — README 내 상대 링크 대상 파일 존재 확인 (`README.ko.md`, `LICENSE`, `docs/images/*.png`, `bridge/README.md`, `docs/operations-discord-tailscale.md`, `.env.example`)
-- [ ] **Step 4: Commit** — `docs: 영문 README 메인 + 한국어 README.ko.md`
+- [x] **Step 1: README.ko.md 생성** — 현 한국어 README 내용 이동 + Docker/구독 모드 Quick Start 섹션 추가 + 상단에 `[English](README.md)` 링크
+- [x] **Step 2: README.md 영문 작성** — 구조: 한 줄 소개 → 뱃지(CI·MIT) → 언어 링크 → 스크린샷 → Features → Quick start (Docker: Option A API 키 / Option B 구독 sync-creds 3단계, 수동 설치 보조) → Configuration 표 → Architecture → Notes & limitations (한국어 중심 UI, 토큰 갱신 시 sync-creds 재실행, 본인 계정만 사용) → Development(pytest, bridge vitest) → License
+- [x] **Step 3: 링크 검증** — README 내 상대 링크 대상 파일 존재 확인 (`README.ko.md`, `LICENSE`, `docs/images/*.png`, `bridge/README.md`, `docs/operations-discord-tailscale.md`, `.env.example`)
+- [x] **Step 4: Commit** — `docs: 영문 README 메인 + 한국어 README.ko.md`
 
 ### Task 8: 최종 검증
 
-- [ ] **Step 1: pytest** — `python -m pytest -q` → 266 passed 기대
-- [ ] **Step 2: bridge 테스트** — `cd bridge && npm test` (로컬 node 가용 시; 아니면 CI 위임 명시)
-- [ ] **Step 3: compose 스모크** — `BRIDGE_TOKEN=dummy docker compose up -d liby` → `curl http://127.0.0.1:8000/` 200 → `docker compose down` (Docker 가용 시)
-- [ ] **Step 4: PII 재스캔** — `git ls-files | xargs grep -lE '(juhyeon001@gmail|Users[/\\]ju[/\\])' ` 빈 출력, `git ls-files | grep -E '(creds/|\.env$|demo\.db)'` 빈 출력
-- [ ] **Step 5: Commit (잔여분)** — 플랜 체크박스 갱신 커밋
+- [x] **Step 1: pytest** — `python -m pytest -q` → 266 passed 기대
+- [x] **Step 2: bridge 테스트** — `cd bridge && npm test` (로컬 node 가용 시; 아니면 CI 위임 명시)
+- [x] **Step 3: compose 스모크** — `BRIDGE_TOKEN=dummy docker compose up -d liby` → `curl http://127.0.0.1:8000/` 200 → `docker compose down` (Docker 가용 시)
+- [x] **Step 4: PII 재스캔** — `git ls-files | xargs grep -lE '(juhyeon001@gmail|Users[/\\]ju[/\\])' ` 빈 출력, `git ls-files | grep -E '(creds/|\.env$|demo\.db)'` 빈 출력
+- [x] **Step 5: Commit (잔여분)** — 플랜 체크박스 갱신 커밋
