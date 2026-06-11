@@ -3,7 +3,8 @@ services:
     build: .
     image: liby:latest
     ports:
-      - "8000:8000"
+      # 호스트 포트 충돌 시 .env에서 LIBY_PORT로 변경
+      - "${LIBY_PORT:-8000}:8000"
     environment:
       DB_PATH: /data/liby.db
       VAULT_PATH: /data/vault
