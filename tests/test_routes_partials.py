@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch
 from httpx import AsyncClient, ASGITransport
+import config
 from main import app
 
 
@@ -17,7 +18,8 @@ async def test_pdf_input_partial_uses_label_wrapped_input():
 
 
 @pytest.mark.asyncio
-async def test_api_cost_partial_uses_new_header_text():
+async def test_api_cost_partial_uses_new_header_text(db_path, monkeypatch):
+    monkeypatch.setattr(config, "DB_PATH", db_path)  # 실 liby.db 의존 금지 — 빈 체크아웃에서도 통과해야 함
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         resp = await c.get("/api/settings/cost")
     assert resp.status_code == 200
@@ -48,8 +50,9 @@ async def test_index_theme_toggle_uses_icon():
 
 
 @pytest.mark.asyncio
-async def test_cost_widget_has_usage_detail_link():
+async def test_cost_widget_has_usage_detail_link(db_path, monkeypatch):
     """sidebar 위젯의 '상세' 텍스트가 /api/settings/usage로 가는 링크여야 한다."""
+    monkeypatch.setattr(config, "DB_PATH", db_path)  # 실 liby.db 의존 금지 — 빈 체크아웃에서도 통과해야 함
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         resp = await c.get("/api/settings/cost")
     assert resp.status_code == 200
