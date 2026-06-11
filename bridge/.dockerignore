@@ -1,0 +1,9 @@
+node_modules
+dist
+test
+.env
+.env.*
+*.log
+docker-compose.yml
+docker-client-compose.example.yml
+README.md

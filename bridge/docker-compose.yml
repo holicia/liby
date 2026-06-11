@@ -1,0 +1,62 @@
+services:
+  agent-runner-bridge:
+    build: .
+    image: agent-runner-bridge:latest
+    # Published only on loopback; put a reverse proxy in front for remote access.
+    ports:
+      - "127.0.0.1:${PORT:-8787}:8787"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8787
+      # Shared secret every caller must send as `Authorization: Bearer <token>`.
+      BRIDGE_TOKEN: ${BRIDGE_TOKEN:?set BRIDGE_TOKEN in your .env}
+      # Clients address workspaces by their in-container path under /workspace.
+      WORKSPACE_ALLOWLIST: /workspace
+      # Optional host->container path rewrite, e.g. "C:\\Projects:/workspace".
+      PATH_MAPPINGS: ${PATH_MAPPINGS:-}
+      # Which request-supplied env vars are allowed through to the agent.
+      ENV_ALLOWLIST: OPENAI_API_KEY,ANTHROPIC_API_KEY
+      # Auth precedence: "local" (default) prefers a mounted/subscription login
+      # and uses API keys only as a fallback; "api" always uses API keys.
+      AUTH_PREFERENCE: ${AUTH_PREFERENCE:-local}
+      # --- Auth mode A: API keys (leave blank to use mounted credentials) ---
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # --- Monthly budget guard (blank/0 = no limit) ---
+      CLAUDE_MONTHLY_LIMIT_USD: ${CLAUDE_MONTHLY_LIMIT_USD:-}
+      GPT_MONTHLY_LIMIT_USD: ${GPT_MONTHLY_LIMIT_USD:-}
+      USAGE_LEDGER_PATH: /data/usage-ledger.json
+      # Codex reports tokens, not USD; estimate cost with these per-1M-token rates.
+      CODEX_PRICE_INPUT_PER_MTOK: ${CODEX_PRICE_INPUT_PER_MTOK:-}
+      CODEX_PRICE_CACHED_INPUT_PER_MTOK: ${CODEX_PRICE_CACHED_INPUT_PER_MTOK:-}
+      CODEX_PRICE_OUTPUT_PER_MTOK: ${CODEX_PRICE_OUTPUT_PER_MTOK:-}
+      # Adapter used when a request omits "adapter".
+      DEFAULT_AI_PROVIDER: ${DEFAULT_AI_PROVIDER:-}
+      # Seconds after SIGTERM before SIGKILL on cancel/timeout.
+      GRACE_SEC: ${GRACE_SEC:-5}
+    volumes:
+      # The directory the agents read/write. Point HOST_WORKSPACE at your code.
+      - ${HOST_WORKSPACE:-./workspace}:/workspace
+      # Persists the monthly spend ledger across restarts.
+      - usage-ledger:/data
+      # --- Auth mode B: subscription login (uncomment + log in on the host first) ---
+      # The container runs as the non-root `node` user, whose home is /home/node.
+      # - ${CLAUDE_CREDS:-~/.claude}:/home/node/.claude
+      # - ${CODEX_CREDS:-~/.codex}:/home/node/.codex
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    # Retain roughly a month of logs with size-based rotation (50 MB total).
+    # With /health logging suppressed, real-request volume fits comfortably.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  usage-ledger:

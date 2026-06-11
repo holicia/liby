@@ -1,0 +1,8 @@
+services:
+  app:
+    image: your-app-image
+    environment:
+      AGENT_RUNNER_BRIDGE_URL: http://host.docker.internal:8787
+      AGENT_RUNNER_BRIDGE_TOKEN: replace-with-the-same-token
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

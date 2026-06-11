@@ -15,3 +15,13 @@ __pycache__/
 mobile-*.png
 debug_api.py
 lilys_sample.txt
+
+# bridge (하위 디렉토리 — 로컬 산출물·인증 정보 제외)
+bridge/node_modules/
+bridge/dist/
+bridge/creds/
+bridge/.env
+bridge/workspace/
+
+# Docker 데이터 디렉토리
+data/

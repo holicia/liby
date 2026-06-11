@@ -1,0 +1,19 @@
+# Operational override: mount subscription credentials so the agents authenticate
+# via your local Claude/Codex login (no API billing) under AUTH_PREFERENCE=local.
+#
+# Recommended (works for both, cross-platform): mount credential-ONLY directories
+# populated by scripts/sync-creds.ps1, e.g. in .env:
+#   COMPOSE_PATH_SEPARATOR=;
+#   COMPOSE_FILE=docker-compose.yml;docker-compose.local-auth.yml
+#   CLAUDE_CREDS=./creds/claude
+#   CODEX_CREDS=./creds/codex
+#
+# You may instead point these at your live ~/.claude and ~/.codex, but on Windows
+# the live ~/.codex breaks Codex (sqlite/app-server cannot init on a Windows bind
+# mount: "Operation not permitted"), and live mounts let the container write
+# history/logs/tokens into your real dirs. Prefer the creds-only dirs above.
+services:
+  agent-runner-bridge:
+    volumes:
+      - ${CLAUDE_CREDS:?set CLAUDE_CREDS (e.g. ./creds/claude)}:/home/node/.claude
+      - ${CODEX_CREDS:?set CODEX_CREDS (e.g. ./creds/codex)}:/home/node/.codex
