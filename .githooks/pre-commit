@@ -1,0 +1,34 @@
+#!/usr/bin/env sh
+# liby pre-commit 시크릿/개인정보 스캔 — 공개 저장소 보호용 이중 안전장치.
+# .gitignore가 1차 방어선이고, 이 훅은 실수로 스테이징된 민감 정보를 커밋 직전 차단한다.
+# 우회가 필요하면: git commit --no-verify (권장하지 않음)
+
+fail=0
+
+# 1) 절대 추적되면 안 되는 파일이 스테이징됐는지
+blocked=$(git diff --cached --name-only --diff-filter=AM | grep -iE '(^|/)\.env$|(^|/)liby\.db|(^|/)demo\.db|(^|/)server\.log|(^|/)creds/|(^|/)bridge/creds/') || true
+if [ -n "$blocked" ]; then
+  echo "✖ pre-commit: 추적 금지 파일이 스테이징됨:" >&2
+  echo "$blocked" | sed 's/^/    /' >&2
+  fail=1
+fi
+
+# 2) 스테이징된 변경 내용에서 시크릿/개인정보 패턴
+#    (sk-ant-..., sk-proj-... 같은 플레이스홀더는 줄임표 포함이라 실제 키와 구분됨)
+diff=$(git diff --cached)
+hits=$(printf '%s\n' "$diff" \
+  | grep -aE '^\+' \
+  | grep -aiE 'sk-ant-api[0-9]{2}-[A-Za-z0-9_-]{20,}|sk-proj-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{36}|xox[baprs]-[A-Za-z0-9-]{10,}|juhyeon001@gmail\.com|[A-Za-z]:[\\/]+Users[\\/]+ju[\\/]') \
+  || true
+if [ -n "$hits" ]; then
+  echo "✖ pre-commit: 시크릿/개인정보로 보이는 내용이 추가됨:" >&2
+  printf '%s\n' "$hits" | sed 's/^/    /' >&2
+  fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo "" >&2
+  echo "커밋이 차단되었습니다. 위 항목을 제거하거나 .gitignore를 확인하세요." >&2
+  exit 1
+fi
+exit 0

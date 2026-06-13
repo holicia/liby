@@ -106,7 +106,10 @@ FastAPI ── routers (youtube / pdf / text / code / items / projects / ...)
 ```bash
 python -m pytest          # liby tests (all external calls mocked — no keys needed)
 cd bridge && npm test     # bridge tests
+git config core.hooksPath .githooks   # enable the secret-scan pre-commit hook (once per clone)
 ```
+
+The `.githooks/pre-commit` hook blocks accidental commits of `.env`, the database, or API-key/credential patterns. Run the `git config` line once after cloning to enable it.
 
 Design specs and implementation plans live in [docs/superpowers/](docs/superpowers/) (Korean).
 
