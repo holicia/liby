@@ -2,9 +2,8 @@
 
 > Paste a YouTube URL, PDF, article text, or code — get a structured AI summary note in a local web library you own.
 
+[![CI](https://github.com/holicia/liby/actions/workflows/ci.yml/badge.svg)](https://github.com/holicia/liby/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-<!-- After publishing, add the CI badge:
-[![CI](https://github.com/<owner>/liby/actions/workflows/ci.yml/badge.svg)](https://github.com/<owner>/liby/actions) -->
 
 **English** | [한국어](README.ko.md)
 
