@@ -1,13 +1,9 @@
+{% from "macros.html" import provider_select %}
 <form hx-post="/api/youtube" hx-target="#queue-panel" hx-swap="beforeend" hx-include="#current-project" class="flex flex-col md:flex-row gap-2 md:items-center">
   <input name="url" type="url" required
          placeholder="YouTube URL을 입력하세요 (예: https://youtube.com/watch?v=...)"
          class="md:flex-1 bg-white border border-[#E2E8E4] rounded-lg px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-[#1F6F4A] dark:bg-gray-800 dark:text-gray-200">
-  <select name="provider" class="bg-white border border-[#E2E8E4] rounded-lg px-3 py-2.5 text-xs text-gray-500 dark:bg-gray-800">
-    <option value="claude-cli">Claude CLI (구독, 무료)</option>
-    <option value="codex-cli">Codex CLI (구독, 무료)</option>
-    <option value="claude">Claude API ($)</option>
-    <option value="gpt">GPT API ($)</option>
-  </select>
+  {{ provider_select(default_provider | default("claude")) }}
   <select name="mode" class="bg-white border border-[#E2E8E4] rounded-lg px-3 py-2.5 text-xs text-gray-500 dark:bg-gray-800">
     <option value="quick">빠른 정리</option>
     <option value="detailed">상세 정리</option>

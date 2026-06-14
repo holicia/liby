@@ -280,6 +280,28 @@ async def test_youtube_input_form_stacks_on_mobile():
 
 
 @pytest.mark.asyncio
+async def test_input_partial_default_provider_follows_config(monkeypatch):
+    """provider 드롭다운 기본 선택이 config.DEFAULT_AI_PROVIDER를 따라야 함
+    (API 키 모드인데 구독 bridge가 기본 선택되어 BRIDGE_TOKEN 에러 나던 회귀 방지)."""
+    monkeypatch.setattr(config, "DEFAULT_AI_PROVIDER", "claude")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        resp = await c.get("/partials/input/youtube")
+    assert resp.status_code == 200
+    assert '<option value="claude" selected>' in resp.text
+    assert '<option value="claude-cli" selected>' not in resp.text
+
+
+@pytest.mark.asyncio
+async def test_index_input_default_provider_follows_config(monkeypatch):
+    """초기 화면(base.html include)의 provider 기본 선택도 config를 따라야 함."""
+    monkeypatch.setattr(config, "DEFAULT_AI_PROVIDER", "gpt")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        resp = await c.get("/")
+    assert resp.status_code == 200
+    assert '<option value="gpt" selected>' in resp.text
+
+
+@pytest.mark.asyncio
 async def test_index_prevents_ios_input_zoom():
     """모바일 폼 컨트롤 16px 규칙으로 iOS Safari 포커스 자동확대 방지."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:

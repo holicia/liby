@@ -46,8 +46,14 @@ async def get_input_partial(request: Request, tab: str) -> HTMLResponse:
     valid_tabs = {"youtube", "pdf", "code", "text", "markdown"}
     if tab not in valid_tabs:
         tab = "youtube"
-    return templates.TemplateResponse(request, f"partials/input_{tab}.html", {})
+    return templates.TemplateResponse(
+        request, f"partials/input_{tab}.html",
+        {"default_provider": config.DEFAULT_AI_PROVIDER},
+    )
 
 @app.get("/")
 async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request, "default_provider": config.DEFAULT_AI_PROVIDER},
+    )
