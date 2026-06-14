@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from services.task_queue import get_task, queue_meta, cancel_task
+from services.task_queue import get_task, queue_meta, cancel_task, dismiss_task
 from templates_env import templates
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -19,8 +19,13 @@ async def get_task_status(request: Request, task_id: str):
 
     if task.status == "error":
         return HTMLResponse(
-            f'<div class="note-card bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">'
-            f'분석 실패: {task.error}</div>'
+            f'<div id="task-{task.id}" class="note-card bg-red-50 border border-red-200 rounded-xl p-4 dark:bg-red-900/20 dark:border-red-800">'
+            f'<div class="flex items-start gap-2">'
+            f'<span class="flex-1 text-sm text-red-600 dark:text-red-400">분석 실패: {task.error}</span>'
+            f'<button hx-post="/api/tasks/{task.id}/dismiss" hx-target="#task-{task.id}" hx-swap="outerHTML"'
+            f' class="flex-shrink-0 text-[13px] text-red-400 hover:text-red-600 transition-colors px-1 leading-none"'
+            f' title="닫기">✕</button>'
+            f'</div></div>'
         )
 
     if task.status == "cancelled":
@@ -37,4 +42,14 @@ async def cancel(task_id: str):
     if task is None:
         raise HTTPException(status_code=404, detail="task not found")
     ok = await cancel_task(task_id)
+    return HTMLResponse("", status_code=200 if ok else 409)
+
+
+@router.post("/{task_id}/dismiss")
+async def dismiss(task_id: str):
+    """종결된 task(error/done/cancelled) 카드 닫기. 빈 응답으로 카드를 제거한다."""
+    task = get_task(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    ok = await dismiss_task(task_id)
     return HTMLResponse("", status_code=200 if ok else 409)

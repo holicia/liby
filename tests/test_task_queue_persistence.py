@@ -277,3 +277,34 @@ async def test_text_builder_registered_and_reconstructs(_isolated):
     fake.assert_awaited()
     assert t.note_id == 7
     assert t.title == "제목"
+
+
+@pytest.mark.asyncio
+async def test_dismiss_error_task_removes_from_memory(_isolated):
+    """error 상태 task를 dismiss하면 _tasks에서 제거되고 True 반환."""
+    tq.register_builder("youtube", lambda s: (lambda t: None))
+    task = tq.new_task("youtube", "t", spec={"url": "u"})
+    await asyncio.sleep(0.05)
+    task.status = "error"
+    task.error = "boom"
+    ok = await tq.dismiss_task(task.id)
+    assert ok is True
+    assert task.id not in tq._tasks
+
+
+@pytest.mark.asyncio
+async def test_dismiss_running_task_refused(_isolated):
+    """진행 중(running)·대기(queued) task는 dismiss 불가(취소를 써야 함) → False."""
+    tq.register_builder("youtube", lambda s: (lambda t: None))
+    task = tq.new_task("youtube", "t", spec={"url": "u"})
+    await asyncio.sleep(0.05)
+    assert task.status == "queued"
+    ok = await tq.dismiss_task(task.id)
+    assert ok is False
+    assert task.id in tq._tasks
+
+
+@pytest.mark.asyncio
+async def test_dismiss_unknown_id_returns_false(_isolated):
+    """존재하지 않는 id dismiss → False."""
+    assert await tq.dismiss_task("nope") is False

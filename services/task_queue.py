@@ -194,6 +194,22 @@ async def cancel_task(task_id: str) -> bool:
     return False
 
 
+async def dismiss_task(task_id: str, db_path: str | None = None) -> bool:
+    """종결된 task(error/done/cancelled) 카드를 사용자가 닫는다. 메모리에서 제거하고
+    영구화된 row도 삭제한다. 진행 중(queued/running)은 취소(cancel)를 써야 하므로 거부.
+    반환: 제거했는지 여부."""
+    task = _tasks.get(task_id)
+    if task is None or task.status not in ("error", "done", "cancelled"):
+        return False
+    _tasks.pop(task_id, None)
+    if task.source_type in _BUILDERS:
+        path = db_path or config.DB_PATH
+        async with aiosqlite.connect(path) as db:
+            await db.execute("DELETE FROM analysis_tasks WHERE id=?", (task_id,))
+            await db.commit()
+    return True
+
+
 async def restore_pending_tasks(db_path: str | None = None) -> int:
     """서버 시작 시 queued/running 상태로 남은 task들을 다시 큐에 넣는다.
     'running' → 'queued'로 reset(이전 process가 끊긴 시점부터 다시 시도).
