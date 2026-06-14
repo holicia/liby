@@ -36,10 +36,10 @@ cp .env.example .env
 `.env`에 `DEFAULT_AI_PROVIDER=claude`(또는 `gpt`)와 해당 API 키를 설정한 뒤:
 
 ```bash
-docker compose up --build liby
+docker compose up --build
 ```
 
-브라우저에서 http://127.0.0.1:8000 접속.
+브라우저에서 http://127.0.0.1:8000 접속. (bridge는 opt-in이라 liby만 뜹니다.)
 
 ### 방법 B — 본인 구독 (Claude Pro / ChatGPT Plus)
 
@@ -49,13 +49,13 @@ docker compose up --build liby
 2. 인증 정보를 (gitignore된) 마운트 디렉토리로 복사:
    - Windows: `pwsh ./bridge/scripts/sync-creds.ps1`
    - macOS/Linux: `./bridge/scripts/sync-creds.sh`
-3. `.env`의 `BRIDGE_TOKEN`에 임의의 긴 문자열을 넣고:
+3. `.env`의 `BRIDGE_TOKEN`에 임의의 긴 문자열을 넣고 `bridge` 프로필로 실행:
 
 ```bash
-docker compose up --build
+docker compose --profile bridge up --build
 ```
 
-`docker compose up` 한 번으로 liby와 bridge가 함께 뜨고, liby는 내부 네트워크로 bridge에 자동 연결됩니다.
+`bridge` 프로필이 liby와 bridge를 함께 띄우고, liby는 내부 네트워크로 bridge에 자동 연결됩니다. 프로필 없이 실행하면 liby만 뜨므로 `BRIDGE_TOKEN`이 없어도 API 키 경로는 막히지 않습니다.
 구독 토큰이 만료/갱신되면 `sync-creds`를 다시 실행하세요. 반드시 **본인 계정**만 사용하세요.
 
 ### 수동 설치 (Docker 없이)

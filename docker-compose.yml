@@ -31,15 +31,18 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  # 구독 인증(Claude Pro / ChatGPT Plus) 또는 API 키로 CLI 에이전트를 실행하는 게이트웨이.
-  # API 키만 쓸 경우: docker compose up liby 로 단독 실행 가능.
+  # 구독 인증(Claude Pro / ChatGPT Plus) 게이트웨이 — opt-in.
+  # 기본 `docker compose up`은 liby만 띄움(API 키 모드).
+  # 구독 모드: `docker compose --profile bridge up` (BRIDGE_TOKEN 필요).
   bridge:
+    profiles: ["bridge"]
     build: ./bridge
     image: agent-runner-bridge:latest
     environment:
       HOST: 0.0.0.0
       PORT: 8787
-      BRIDGE_TOKEN: ${BRIDGE_TOKEN:?set BRIDGE_TOKEN in .env}
+      # 빈 값이면 bridge가 런타임에 "BRIDGE_TOKEN is required"로 종료(.env에 설정 필요).
+      BRIDGE_TOKEN: ${BRIDGE_TOKEN:-}
       WORKSPACE_ALLOWLIST: /workspace
       ENV_ALLOWLIST: OPENAI_API_KEY,ANTHROPIC_API_KEY
       AUTH_PREFERENCE: ${AUTH_PREFERENCE:-local}

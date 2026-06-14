@@ -39,10 +39,10 @@ cp .env.example .env
 Set in `.env`: `DEFAULT_AI_PROVIDER=claude` (or `gpt`) and the matching API key, then:
 
 ```bash
-docker compose up --build liby
+docker compose up --build
 ```
 
-Open http://127.0.0.1:8000.
+Open http://127.0.0.1:8000. (The bridge is opt-in, so this starts liby only.)
 
 ### Option B — your own subscription (Claude Pro / ChatGPT Plus)
 
@@ -52,13 +52,13 @@ Runs analyses through the Claude Code / Codex CLI authenticated with **your own 
 2. Copy your credentials into the (gitignored) mount directory:
    - Windows: `pwsh ./bridge/scripts/sync-creds.ps1`
    - macOS/Linux: `./bridge/scripts/sync-creds.sh`
-3. Set `BRIDGE_TOKEN` in `.env` to any long random string, then:
+3. Set `BRIDGE_TOKEN` in `.env` to any long random string, then start with the `bridge` profile:
 
 ```bash
-docker compose up --build
+docker compose --profile bridge up --build
 ```
 
-`docker compose up` starts both liby and the bridge; liby reaches the bridge over the internal network automatically.
+The `bridge` profile starts both liby and the bridge; liby reaches the bridge over the internal network automatically. Without the profile only liby runs, so a missing `BRIDGE_TOKEN` never blocks the API-key path.
 
 ### Manual install (no Docker)
 
