@@ -48,8 +48,11 @@ services:
       AUTH_PREFERENCE: ${AUTH_PREFERENCE:-local}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      CLAUDE_MONTHLY_LIMIT_USD: ${CLAUDE_MONTHLY_LIMIT_USD:-}
-      GPT_MONTHLY_LIMIT_USD: ${GPT_MONTHLY_LIMIT_USD:-}
+      # bridge 예산은 liby 표시 한도와 분리. 구독 모드는 실제 추가 비용이 0이므로
+      # 기본 무제한(빈 값). API 키 모드에서 bridge에도 상한을 두려면 .env에
+      # BRIDGE_CLAUDE_LIMIT_USD / BRIDGE_GPT_LIMIT_USD 설정.
+      CLAUDE_MONTHLY_LIMIT_USD: ${BRIDGE_CLAUDE_LIMIT_USD:-}
+      GPT_MONTHLY_LIMIT_USD: ${BRIDGE_GPT_LIMIT_USD:-}
       USAGE_LEDGER_PATH: /data/usage-ledger.json
       GRACE_SEC: ${GRACE_SEC:-5}
     volumes:
