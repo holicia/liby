@@ -73,9 +73,13 @@ async def get_item_detail(request: Request, note_id: int):
 @router.get("/{note_id}/read")
 async def read_view(request: Request, note_id: int):
     note = await get_note(config.DB_PATH, note_id)
-    if not note or note.get("type") != "youtube":
+    if not note:
         return RedirectResponse("/", status_code=302)
-    video_id = youtube_video_id(note.get("source_url"))
+    video_id = (
+        youtube_video_id(note.get("source_url"))
+        if note.get("type") == "youtube" and note.get("source_url")
+        else None
+    )
     return templates.TemplateResponse(
         request, "read.html", {"note": note, "video_id": video_id},
     )
