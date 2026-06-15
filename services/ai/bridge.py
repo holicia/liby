@@ -8,9 +8,13 @@ from services.ai.base import AIProvider, SummaryResult
 from services.ai import chunking
 from services.ai import bridge_client
 from services.ai.claude import (
-    TIER2_PROMPT, TIER2_CODE_PROMPT, DETAILED_PROMPT,
+    TIER2_PROMPT, TIER2_CODE_PROMPT, DETAILED_PROMPT, PAPER_PROMPT,
     CHAPTERS_PROMPT, TRANSLATE_CHAPTERS_PROMPT,
 )
+
+# 논문 단일 분석 시 전송할 본문 최대 길이. 영상 청킹(12K)보다 크게 잡아
+# 초록·방법·결과·결론을 한 번에 담는다.
+_PAPER_TEXT_LIMIT = 45000
 import config
 
 _VALID_ADAPTERS = {"claude", "codex"}
@@ -150,6 +154,46 @@ class BridgeProvider(AIProvider):
             questions_raised=all_questions or None,
             paragraphs=all_paragraphs, cost_usd=total_cost,
             models_used=models_used,
+        )
+
+    async def summarize_paper(
+        self, text: str, figures_manifest: str, existing_topics: list[str],
+    ) -> SummaryResult:
+        figures_block = (
+            f"사용 가능한 그림(번호와 캡션):\n{figures_manifest}\n"
+            if figures_manifest else "사용 가능한 그림: 없음\n"
+        )
+        prompt = PAPER_PROMPT.format(
+            text=text[:_PAPER_TEXT_LIMIT],
+            existing_topics=", ".join(existing_topics) or "없음",
+            figures=figures_block,
+        )
+        run = await bridge_client.run_agent(
+            prompt, adapter=self._adapter, cwd=config.BRIDGE_CWD,
+            timeout_sec=config.BRIDGE_TIMEOUT_SEC,
+        )
+        try:
+            data = chunking.extract_json(run.summary)
+        except (ValueError, json.JSONDecodeError) as e:
+            raise ValueError(
+                f"LLM 응답 JSON 파싱 실패: {run.summary[:200]}"
+            ) from e
+        return SummaryResult(
+            title=data.get("title", "제목 없음"),
+            language=data.get("language", "ko"),
+            word_count=data.get("word_count", 0),
+            reading_time_min=data.get("reading_time_min", 0),
+            sections=chunking.build_sections(data),
+            summary=data.get("summary", ""),
+            key_points=data.get("key_points", []),
+            tags=data.get("tags", []),
+            suggested_topic=data.get("suggested_topic", ""),
+            summary_mode="detailed",
+            insights=data.get("insights"),
+            questions_raised=data.get("questions_raised"),
+            paragraphs=chunking.build_paragraphs(data),
+            cost_usd=run.usage.total_cost_usd,
+            models_used=[self._adapter],
         )
 
     async def run_tier3(self, summary: str) -> SummaryResult:

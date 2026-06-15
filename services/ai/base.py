@@ -41,6 +41,17 @@ class AIProvider(ABC):
     def name(self) -> str:
         ...
 
+    async def summarize_paper(
+        self,
+        text: str,
+        figures_manifest: str,
+        existing_topics: list[str],
+    ) -> "SummaryResult":
+        """학술 논문 PDF 전용 요약(5개 필수 섹션 + 그림 배치).
+        기본 구현은 그림을 무시하고 일반 detailed 요약으로 대체한다.
+        bridge/claude provider가 PAPER_PROMPT로 오버라이드한다."""
+        return await self.summarize(text, "pdf", "detailed", existing_topics)
+
     async def generate_chapters(self, transcript: str) -> tuple[list[dict], float, str]:
         """타임스탬프 자막 → [{t,label}] 챕터. 기본은 빈 결과(프로바이더가 오버라이드)."""
         return [], 0.0, ""

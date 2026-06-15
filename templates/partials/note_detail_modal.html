@@ -172,6 +172,13 @@
                   {% if it.text %}{{ it.text }}{% endif %}{{ ref_chips(effective, video_id, start=ref_ns.no + 1) }}
                 </p>
                 {% set ref_ns.no = ref_ns.no + (effective | length) %}
+                {% if it.image is defined %}
+                <figure class="my-3">
+                  <img src="/vault/pdf/{{ it.image.file }}" alt="{{ it.image.caption }}" loading="lazy"
+                       class="max-w-full rounded-lg border border-[#E2E8E4] dark:border-gray-700 bg-white">
+                  <figcaption class="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-snug">{{ it.image.caption }}</figcaption>
+                </figure>
+                {% endif %}
               </div>
               {% else %}
               {# 백워드 호환: 옛 {lead, bullets} #}

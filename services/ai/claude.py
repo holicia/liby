@@ -76,7 +76,12 @@ def _build_sections(data: dict) -> list[dict]:
                 text = str(it.get("text", "")).strip()
                 if not text:
                     continue
-                items.append({"text": text, "refs": _build_refs(it.get("refs", []))})
+                item_obj = {"text": text, "refs": _build_refs(it.get("refs", []))}
+                # 논문 그림 배치: figure 번호가 있으면 보존(라우터가 image로 치환).
+                fig = _to_t(it.get("figure"))
+                if fig is not None:
+                    item_obj["figure"] = fig
+                items.append(item_obj)
             sub_obj = {"heading": sub_heading, "items": items}
             st = _to_t(sub.get("t"))
             if st is not None:
@@ -217,6 +222,48 @@ JSON으로만 응답하세요:
   ]}}
 (t는 타임스탬프가 있을 때만 넣고, 없으면 키를 생략하세요.)"""
 
+PAPER_PROMPT = """당신은 박사과정 학생의 논문 분석을 돕는 연구 조교입니다.
+아래 학술 논문을 읽고, 박사과정 학생이 지도교수와의 랩미팅에서 **발표할 수 있는 수준**의
+한국어 요약 노트를 작성하세요. 표면적 나열이 아니라 핵심을 짚는 깊이가 있어야 합니다.
+
+기존 주제 목록: {existing_topics}
+
+{figures}
+
+논문 본문:
+{text}
+
+규칙:
+- 반드시 아래 **5개 대섹션을 이 순서·이 제목**으로 작성합니다(누락 금지):
+  1. 연구 목적 — 이 논문이 풀려는 문제, 동기, 기여(contribution).
+  2. 주요 실험 내용 — 실험/시뮬레이션 설계, 대상, 변수, 방법론.
+  3. 이론적 기반 — 바탕이 되는 이론·모델·수식·가정.
+  4. 실험 결과 — 핵심 수치·경향·그래프가 말하는 바, 정량적 결과.
+  5. 생각해볼 점 — 한계, 의의, 후속 연구 방향, 랩미팅에서 던질 만한 비판적 질문.
+- 각 대섹션은 1~3개의 소섹션(heading: "1.1 ...")을 가지며, 각 소섹션은 2~4개의 문단형 항목(items)을 가집니다.
+- 각 item의 text는 2~4문장의 충실한 한국어 설명입니다. 전문 용어는 그대로 쓰되 풀어서 설명합니다.
+- 그림 배치: 위 "사용 가능한 그림"의 번호를 참고해, 그림을 언급·설명하는 문단 item에 "figure": 그림번호 를 넣습니다.
+  해당 그림이 그 문단 바로 아래에 표시됩니다. 결과/실험 섹션에 그림을 적극 배치하세요. 그림이 없으면 figure 키를 생략합니다.
+- refs는 항상 빈 리스트로 둡니다(논문은 타임스탬프가 없음).
+
+JSON으로만 응답하세요:
+{{"title": "한국어 논문 제목(원제 의미를 살린)", "language": "ko",
+  "summary": "논문 전체를 아우르는 2~3문장 한국어 핵심 요약",
+  "tags": ["키워드1", "키워드2", "키워드3"],
+  "suggested_topic": "기존_주제_중_하나_또는_새_주제명",
+  "sections": [
+    {{"heading": "1. 연구 목적", "subsections": [
+      {{"heading": "1.1 문제 정의", "items": [
+        {{"text": "2~4문장 한국어 설명", "refs": []}},
+        {{"text": "그림을 설명하는 문단", "refs": [], "figure": 2}}
+      ]}}
+    ]}},
+    {{"heading": "2. 주요 실험 내용", "subsections": [...]}},
+    {{"heading": "3. 이론적 기반", "subsections": [...]}},
+    {{"heading": "4. 실험 결과", "subsections": [...]}},
+    {{"heading": "5. 생각해볼 점", "subsections": [...]}}
+  ]}}"""
+
 SUMMARY_MERGE_PROMPT = """다음은 한 영상을 여러 조각으로 나눠 분석한 부분 요약들입니다.
 이를 합쳐 영상 전체를 자연스럽게 다루는 한국어 2~3문장 통합 요약을 작성하세요.
 
@@ -352,6 +399,43 @@ class ClaudeProvider(AIProvider):
             result = await self._run_tier3(result, total_cost, models_used)
 
         return result
+
+    async def summarize_paper(
+        self, text: str, figures_manifest: str, existing_topics: list[str],
+    ) -> SummaryResult:
+        figures_block = (
+            f"사용 가능한 그림(번호와 캡션):\n{figures_manifest}\n"
+            if figures_manifest else "사용 가능한 그림: 없음\n"
+        )
+        model = config.CLAUDE_MODELS["tier2"]
+        prompt = PAPER_PROMPT.format(
+            text=text[:45000],
+            existing_topics=", ".join(existing_topics) or "없음",
+            figures=figures_block,
+        )
+        resp = await self._client.messages.create(
+            model=model, max_tokens=16384,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        data = _parse_json(resp.content[0].text)
+        cost = _calc_cost(model, resp.usage.input_tokens, resp.usage.output_tokens)
+        return SummaryResult(
+            title=data.get("title", "제목 없음"),
+            language=data.get("language", "ko"),
+            word_count=data.get("word_count", 0),
+            reading_time_min=data.get("reading_time_min", 0),
+            sections=_build_sections(data),
+            summary=data.get("summary", ""),
+            key_points=data.get("key_points", []),
+            tags=data.get("tags", []),
+            suggested_topic=data.get("suggested_topic", ""),
+            summary_mode="detailed",
+            insights=data.get("insights"),
+            questions_raised=data.get("questions_raised"),
+            paragraphs=_build_paragraphs(data),
+            cost_usd=cost,
+            models_used=[model],
+        )
 
     async def _merge_partials(
         self,
