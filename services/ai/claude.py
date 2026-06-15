@@ -11,7 +11,26 @@ def _parse_json(raw: str) -> dict:
     if raw.startswith("```"):
         raw = re.sub(r'^```(?:json)?\n?', '', raw)
         raw = re.sub(r'\n?```\s*$', '', raw)
-    return json.loads(raw.strip())
+    raw = raw.strip()
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+    # CLI 모델은 JSON 앞뒤에 설명 산문을 덧붙이곤 한다("...입니다:\n{...}\n\n요약: ...").
+    # 첫 '{'부터 균형 잡힌 객체만 추출(raw_decode는 후행 데이터를 무시하고,
+    # 문자열 안의 중괄호·중첩 객체도 실제 파서가 정확히 처리한다).
+    decoder = json.JSONDecoder()
+    start = raw.find("{")
+    while start != -1:
+        try:
+            obj, _ = decoder.raw_decode(raw, start)
+        except json.JSONDecodeError:
+            start = raw.find("{", start + 1)
+            continue
+        if isinstance(obj, dict):
+            return obj
+        start = raw.find("{", start + 1)
+    raise ValueError(f"JSON 객체를 찾을 수 없습니다: {raw[:200]}")
 
 
 def _build_chapters(data: dict) -> list[dict]:
