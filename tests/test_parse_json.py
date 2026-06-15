@@ -48,6 +48,23 @@ def test_nested_object():
     assert _parse_json(raw) == {"a": {"b": [1, 2]}, "c": 3}
 
 
+def test_prefers_richest_object_over_leading_small_one():
+    """앞에 작은 보조 객체가 있어도 요약 키를 가진 본 객체를 골라야 한다
+    (재등록 시 빈 노트가 저장되던 회귀 방지)."""
+    raw = ('{"status": "ok"}\n'
+           '{"title": "논문", "summary": "핵심", "sections": [{"heading": "1. 목적"}]}')
+    out = _parse_json(raw)
+    assert out.get("title") == "논문"
+    assert "sections" in out
+
+
+def test_prefers_richest_object_over_trailing_small_one():
+    raw = ('{"title": "논문", "summary": "핵심", "sections": []}\n'
+           '{"note": "끝"}')
+    out = _parse_json(raw)
+    assert out.get("title") == "논문"
+
+
 def test_truly_invalid_raises():
     with pytest.raises((ValueError,)):
         _parse_json("이건 JSON이 전혀 아닙니다. 객체 없음.")

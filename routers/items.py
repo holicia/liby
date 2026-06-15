@@ -85,14 +85,40 @@ async def read_view(request: Request, note_id: int):
     )
 
 
+def _figure_dir_of(note: dict | None) -> str | None:
+    """노트 sections에 박힌 그림 경로('<slug>/figN.png')에서 그림 디렉토리를 찾는다."""
+    if not note:
+        return None
+    import json as _json
+    sections = note.get("sections")
+    if isinstance(sections, str):
+        try:
+            sections = _json.loads(sections)
+        except (ValueError, TypeError):
+            return None
+    for sec in sections or []:
+        for sub in sec.get("subsections", []):
+            for it in sub.get("items", []):
+                img = it.get("image")
+                if img and img.get("file") and "/" in img["file"]:
+                    slug = img["file"].split("/", 1)[0]
+                    return os.path.join(config.VAULT_PATH, "pdf", slug)
+    return None
+
+
 @router.delete("/{note_id}")
 async def delete_item(note_id: int):
+    note = await get_note(config.DB_PATH, note_id)
+    fig_dir = _figure_dir_of(note)
     md_path = await delete_note(config.DB_PATH, note_id)
     if md_path:
         try:
             Path(md_path).unlink()
         except FileNotFoundError:
             pass
+    if fig_dir and os.path.isdir(fig_dir):
+        import shutil
+        shutil.rmtree(fig_dir, ignore_errors=True)
     resp = HTMLResponse(content="", status_code=200)
     # 사이드바 #total-count + 미분류·프로젝트 카운트도 같이 갱신
     resp.headers["HX-Trigger"] = "noteDeleted, projectsChanged"

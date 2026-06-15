@@ -168,22 +168,32 @@ class BridgeProvider(AIProvider):
             existing_topics=", ".join(existing_topics) or "없음",
             figures=figures_block,
         )
-        run = await bridge_client.run_agent(
-            prompt, adapter=self._adapter, cwd=config.BRIDGE_CWD,
-            timeout_sec=config.BRIDGE_TIMEOUT_SEC,
-        )
-        try:
-            data = chunking.extract_json(run.summary)
-        except (ValueError, json.JSONDecodeError) as e:
-            raise ValueError(
-                f"LLM 응답 JSON 파싱 실패: {run.summary[:200]}"
-            ) from e
+        # PDF task는 워커 자동 재시도 대상이 아니므로(비영구화), 비결정적 빈/깨진
+        # 응답을 여기서 직접 1회 더 시도한다.
+        last_err = "알 수 없음"
+        for attempt in range(2):
+            run = await bridge_client.run_agent(
+                prompt, adapter=self._adapter, cwd=config.BRIDGE_CWD,
+                timeout_sec=config.BRIDGE_TIMEOUT_SEC,
+            )
+            try:
+                data = chunking.extract_json(run.summary)
+            except (ValueError, json.JSONDecodeError):
+                last_err = f"JSON 파싱 실패: {run.summary[:150]}"
+                continue
+            sections = chunking.build_sections(data)
+            if not sections and not data.get("summary"):
+                last_err = f"빈 응답: {run.summary[:150]}"
+                continue
+            break
+        else:
+            raise ValueError(f"논문 분석 실패(2회 시도): {last_err}")
         return SummaryResult(
             title=data.get("title", "제목 없음"),
             language=data.get("language", "ko"),
             word_count=data.get("word_count", 0),
             reading_time_min=data.get("reading_time_min", 0),
-            sections=chunking.build_sections(data),
+            sections=sections,
             summary=data.get("summary", ""),
             key_points=data.get("key_points", []),
             tags=data.get("tags", []),

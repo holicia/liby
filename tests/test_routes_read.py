@@ -30,13 +30,28 @@ async def test_read_view_renders_youtube_note():
 
 
 @pytest.mark.asyncio
-async def test_read_view_redirects_non_youtube():
-    pdf_note = {**YT_NOTE, "type": "pdf", "source_url": "paper.pdf"}
+async def test_read_view_renders_pdf_note_single_column():
+    """PDF 논문 노트는 전체화면 read 뷰에서 단일 컬럼·인라인 그림으로 렌더(영상 없음)."""
+    pdf_note = {
+        **YT_NOTE, "type": "pdf", "source_url": "paper.pdf",
+        "summary_mode": "detailed", "paragraphs": [],
+        "sections": [
+            {"heading": "4. 실험 결과", "subsections": [
+                {"heading": "4.1 결과", "items": [
+                    {"text": "보이드 저항 분석", "refs": [],
+                     "image": {"file": "slug-abc/fig4.png", "caption": "Fig. 4. DC resistance"}},
+                ]},
+            ]},
+        ],
+    }
     with patch("routers.items.get_note", new_callable=AsyncMock, return_value=pdf_note):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False) as c:
             resp = await c.get("/api/items/1/read")
-    assert resp.status_code in (302, 307)
-    assert resp.headers.get("location") == "/"
+    assert resp.status_code == 200
+    assert 'id="yt-player"' not in resp.text          # 영상 플레이어 없음
+    assert "/vault/pdf/slug-abc/fig4.png" in resp.text  # 인라인 그림
+    assert "4. 실험 결과" in resp.text
+    assert "max-w-3xl" in resp.text                    # 단일 컬럼 레이아웃
 
 
 @pytest.mark.asyncio
